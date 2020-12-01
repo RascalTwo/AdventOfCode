@@ -1,22 +1,17 @@
-def solve_one(data):
-	nums = list(map(int, data.split('\n')))
-	for i in range(len(nums)):
-		for j in range(len(nums)):
-			if nums[i] == nums[j]:
-				continue
-			if nums[i] + nums[j] == 2020:
-				return nums[i] * nums[j]
+import itertools
+import math
+from typing import Optional
 
+def solve(data: str, length: int) -> Optional[int]:
+	for items in itertools.combinations(map(int, data.split('\n')), length):
+		if sum(items) == 2020:
+			return math.prod(items)
 
-def solve_two(data):
-	nums = list(map(int, data.split('\n')))
-	for i in range(len(nums)):
-		for j in range(len(nums)):
-			for k in range(len(nums)):
-				if nums[i] == nums[j] or nums[i] == nums[k] or nums[j] == nums[k]:
-					continue
-				if nums[i] + nums[j] + nums[k] == 2020:
-					return nums[i] * nums[j] * nums[k]
+def solve_one(data: str):
+	return solve(data, 2)
+
+def solve_two(data: str):
+	return solve(data, 3)
 
 
 with open('input.in') as input_file:
