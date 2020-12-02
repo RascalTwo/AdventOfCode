@@ -1,22 +1,32 @@
 import os
+from typing import Callable, List
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
-def solve_one(data: str):
-	passwords = list(map(lambda line: line.split(':'), data.split('\n')))
-	passwords = [(list(map(int, line[0].split(' ')[0].split('-'))), line[0].split(' ')[1], line[1].strip()) for line in passwords]
+def parse_passwords(data: str):
+	#1-3 a: abc
+	# [([1, 3], 'a', 'abc')]
+	return [
+		(
+			list(map(int, line.split(' ')[0].split('-'))),
+			line.split(' ')[1].split(':')[0],
+			line.split(' ')[-1]
+		)
+		for line in data.split('\n')
+	]
 
-	correct = 0
-	for (min, max), letter, password in passwords:
-		count = 0
-		for char in password:
-			if char == letter:
-				count += 1
-		if count >= min and count <= max:
-			correct += 1
-	return correct
+
+def valid_password_count(data: str, is_valid: Callable[[List[int], str, str], bool]):
+	return sum(is_valid(*password_data) for password_data in parse_passwords(data))
+
+
+def solve_one(data: str):
+	return valid_password_count(
+		data,
+		lambda minmax, letter, password: minmax[0] <= password.count(letter) <= minmax[1]
+	)
 
 
 def test_one():
@@ -29,20 +39,10 @@ def test_one():
 
 
 def solve_two(data: str):
-	passwords = list(map(lambda line: line.split(':'), data.split('\n')))
-	passwords = [(list(map(int, line[0].split(' ')[0].split('-'))), line[0].split(' ')[1], line[1].strip()) for line in passwords]
-
-	correct = 0
-	for (min, max), letter, password in passwords:
-		good = 0
-		if password[min-1] == letter:
-			good += 1
-		if password[max-1] == letter:
-			good += 1
-		if good == 1:
-			correct += 1
-
-	return correct
+	return valid_password_count(
+		data,
+		lambda positions, letter, password: sum(password[position-1] == letter for position in positions) == 1
+	)
 
 
 def test_two():
