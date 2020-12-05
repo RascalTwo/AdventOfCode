@@ -1,40 +1,37 @@
 import os
+import functools
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
-left = ('F', 'L')
-right = ('B', 'R')
+LEFT = ('F', 'L')
+RIGHT = ('B', 'R')
 
 def calc_pos(chars: str, min: int, max: int) -> int:
 	for char in chars:
 		if max - min == 1:
-			return (min, max)[char in right]
-		if char in left:
+			return (min, max)[char in RIGHT]
+		if char in LEFT:
 			max = (min + max) // 2
-		elif char in right:
+		elif char in RIGHT:
 			min = round((min + max) / 2)
+
+	raise Exception('Too few characters')
 
 
 def parse_seat_id(seat: str):
-	row = calc_pos(seat[:7], 0, 127)
-	col = calc_pos(seat[7:], 0, 7)
-	return (row * 8) + col
+	return (calc_pos(seat[:7], 0, 127) * 8) + calc_pos(seat[7:], 0, 7)
+
 
 def solve_one(data: str):
 	seats = data.split('\n')
-	greatest_seat_id = 0
-	for seat in seats:
-		seat_id = parse_seat_id(seat)
-		if seat_id > greatest_seat_id:
-			greatest_seat_id = seat_id
-	return greatest_seat_id
+	return functools.reduce(lambda greatest, seat: max(parse_seat_id(seat), greatest), seats, 0)
 
 
 def test_one():
-	assert calc_pos('RLR', 0, 7) == 5
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
 		data = input_file.read()
+	assert calc_pos('RLR', 0, 7) == 5
 	assert solve_one('FBFBBFFRLR') == 357
 	assert solve_one('BFFFBBFRRR') == 567
 	assert solve_one('FFFBBBFRRR') == 119
