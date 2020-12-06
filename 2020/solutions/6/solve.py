@@ -1,13 +1,12 @@
 import os
+import functools
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
 def solve_one(data: str):
-	groups = data.split('\n\n')
-	chars = [set(group.replace('\n', '')) for group in groups]
-	return sum(len(group) for group in chars)
+	return sum(len(set(group.replace('\n', ''))) for group in data.split('\n\n'))
 
 
 def test_one():
@@ -32,15 +31,13 @@ b''') == 11
 
 
 def solve_two(data: str):
-	groups = data.split('\n\n')
-	valid = 0
-	for group in groups:
-		answers = set(group.replace('\n', ''))
-		fully_answered = answers.copy()
-		for user_answers in [set(user) for user in group.split('\n')]:
-			fully_answered &= user_answers
-		valid += len(fully_answered)
-	return valid
+	return sum(len(
+		functools.reduce(
+			lambda a, b: a & b,
+			map(set, group.split('\n')),
+			set(group.replace('\n', ''))
+		)
+	) for group in data.split('\n\n'))
 
 
 def test_two():
