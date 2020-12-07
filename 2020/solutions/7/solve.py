@@ -1,38 +1,38 @@
 import os
-from typing import Dict, List, Tuple
+from typing import Dict
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
-PileOfBags = Dict[str, List[Tuple[str, int]]]
+PileOfBags = Dict[str, Dict[str, int]]
 
 
-def can_hold(bags: PileOfBags, bag: str, target: str) -> bool:
-	return target in map(lambda sub: sub[0], bags[bag]) or any(can_hold(bags, sub[0], target) for sub in bags[bag])
+def can_hold(pile: PileOfBags, bag: str, target: str) -> bool:
+	return target in pile[bag] or any(can_hold(pile, sub, target) for sub in pile[bag])
 
 
 def parse_pile_of_bags(data: str) -> PileOfBags:
-	bags: PileOfBags = {}
+	pile = {}
 	for raw_bag in data.split('\n'):
 		bag = ' '.join(raw_bag.split(' ')[:2])
 		if 'no other bag' in raw_bag:
-			bags[bag] = []
+			pile[bag] = {}
 			continue
 
-		bags[bag] = [
-			(' '.join(sub[1:]), int(sub[0]))
+		pile[bag] = {
+			' '.join(sub[1:]): int(sub[0])
 			for sub in [
 				sub.replace('bags', '').replace('bag', '').replace('.', '').strip().split(' ')
 				for sub in raw_bag.split('contain ')[1].split(', ')
 			]
-		]
-	return bags
+		}
+	return pile
 
 
 def solve_one(data: str):
-	bags = parse_pile_of_bags(data)
-	return sum(can_hold(bags, bag, 'shiny gold') for bag in bags)
+	pile = parse_pile_of_bags(data)
+	return sum(can_hold(pile, bag, 'shiny gold') for bag in pile)
 
 
 def test_one():
@@ -48,11 +48,10 @@ vibrant plum bags contain 5 faded blue bags, 6 dotted black bags.
 faded blue bags contain no other bags.
 dotted black bags contain no other bags.''') == 4
 	print(solve_one(data))
+test_one()
 
-
-def get_bag_count(bags: Dict[str, List[Tuple[str, int]]], bag: str) -> int:
-	return sum(sub[1] * get_bag_count(bags, sub[0]) for sub in bags.get(bag, [])) + 1
-
+def get_bag_count(pile: PileOfBags, bag: str) -> int:
+	return sum(count * get_bag_count(pile, sub) for sub, count in pile.get(bag, {}).items()) + 1
 
 def solve_two(data: str):
 	return get_bag_count(parse_pile_of_bags(data), 'shiny gold') - 1
