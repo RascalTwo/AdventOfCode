@@ -5,31 +5,34 @@ from typing import Dict, List, Tuple
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
-def can_hold(bags: Dict[str, List[str]], bag: str, child: str) -> bool:
-	if child in bags[bag]:
-		return True
-	for sub_bag in bags[bag]:
-		if can_hold(bags, sub_bag, child):
-			return True
-	return False
+PileOfBags = Dict[str, List[Tuple[str, int]]]
 
-def solve_one(data: str):
-	bags = {}
+
+def can_hold(bags: PileOfBags, bag: str, target: str) -> bool:
+	return target in map(lambda sub: sub[0], bags[bag]) or any(can_hold(bags, sub[0], target) for sub in bags[bag])
+
+
+def parse_pile_of_bags(data: str) -> PileOfBags:
+	bags: PileOfBags = {}
 	for raw_bag in data.split('\n'):
 		bag = ' '.join(raw_bag.split(' ')[:2])
 		if 'no other bag' in raw_bag:
 			bags[bag] = []
 			continue
-		contains = [
-			' '.join(other.replace('bags', '').replace('bag', '').replace('.', '').strip().split(' ')[1:])
-			for other in raw_bag.split('contain ')[1].split(', ')
+
+		bags[bag] = [
+			(' '.join(sub[1:]), int(sub[0]))
+			for sub in [
+				sub.replace('bags', '').replace('bag', '').replace('.', '').strip().split(' ')
+				for sub in raw_bag.split('contain ')[1].split(', ')
+			]
 		]
-		bags[bag] = contains
-	count = 0
-	for bag in bags:
-		if can_hold(bags, bag, 'shiny gold'):
-			count += 1
-	return count
+	return bags
+
+
+def solve_one(data: str):
+	bags = parse_pile_of_bags(data)
+	return sum(can_hold(bags, bag, 'shiny gold') for bag in bags)
 
 
 def test_one():
@@ -47,37 +50,12 @@ dotted black bags contain no other bags.''') == 4
 	print(solve_one(data))
 
 
+def get_bag_count(bags: Dict[str, List[Tuple[str, int]]], bag: str) -> int:
+	return sum(sub[1] * get_bag_count(bags, sub[0]) for sub in bags.get(bag, [])) + 1
 
-def can_hold_two(bags: Dict[str, List[str]], bag: str, child: str) -> bool:
-	if child in bags[bag]:
-		return True
-	for sub_bag in bags[bag]:
-		if can_hold(bags, sub_bag, child):
-			return True
-	return False
-
-def get_bag_count(bags: Dict[str, List[Tuple[str, int]]], bag: str, depth: int) -> int:
-	if bag not in bags:
-		return 0
-	count = 1
-	for sub_bag in bags[bag]:
-		count += sub_bag[1] * get_bag_count(bags, sub_bag[0], depth * 2)
-	return count
 
 def solve_two(data: str):
-	bags = {}
-	for raw_bag in data.split('\n'):
-		bag = ' '.join(raw_bag.split(' ')[:2])
-		if 'no other bag' in raw_bag:
-			bags[bag] = []
-			continue
-		contains = [
-			other.replace('bags', '').replace('bag', '').replace('.', '').strip().split(' ')
-			for other in raw_bag.split('contain ')[1].split(', ')
-		]
-		contains = [(' '.join(other[1:]), int(other[0])) for other in contains]
-		bags[bag] = contains
-	return get_bag_count(bags, 'shiny gold', 1) - 1
+	return get_bag_count(parse_pile_of_bags(data), 'shiny gold') - 1
 
 
 def test_two():
@@ -100,4 +78,3 @@ dark green bags contain 2 dark blue bags.
 dark blue bags contain 2 dark violet bags.
 dark violet bags contain no other bags.''') == 126
 	print(solve_two(data))
-test_two()
