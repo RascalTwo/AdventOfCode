@@ -1,62 +1,46 @@
 import os
-
+from typing import Dict, Tuple
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
-def is_program_good(ops):
+
+Instructions = Dict[int, Tuple[str, int]]
+
+def parse_instructions(data: str) -> Instructions:
+	return {
+		i: (op[0], int(op[1]))
+		for i, op in [
+			(i, op.split(' '))
+			for i, op in enumerate(data.split('\n'))
+		]
+	}
+
+
+def run_program(instructions: Instructions) -> Tuple[int, bool]:
 	acc = 0
 	i = 0
 	ran = set()
-	while i not in ran:
-		ran.add(i)
-		op = ops[i]
-		if op[0] == 'acc':
-			acc += op[1]
-			i += 1
-		elif op[0] == 'jmp':
-			i += op[1]
-		elif op[0] == 'nop':
-			i += 1
-		if i >= len(ops):
-			return True
-	return False
+	while True:
+		if i >= len(instructions):
+			return acc, False
+		if i in ran:
+			return acc, True
 
-def run_program(ops):
-	acc = 0
-	i = 0
-	ran = set()
-	running = True
-	while running:
 		ran.add(i)
-		op = ops[i]
-		if op[0] == 'acc':
-			acc += op[1]
-			i += 1
-		elif op[0] == 'jmp':
-			i += op[1]
-		elif op[0] == 'nop':
-			i += 1
-		if i >= len(ops):
-			break
-	return acc
+		op, argument = instructions[i]
+		if op == 'jmp':
+			i += argument
+			continue
 
-def solve_one(data: str):
-	ops = [(op.split(' ')[0], int(op.split(' ')[1])) for op in data.split('\n')]
-	acc = 0
-	i = 0
-	ran = set()
-	while i not in ran:
-		ran.add(i)
-		op = ops[i]
-		if op[0] == 'acc':
-			acc += op[1]
-			i += 1
-		elif op[0] == 'jmp':
-			i += op[1]
-		elif op[0] == 'nop':
-			i += 1
-	return acc
+		if op == 'acc':
+			acc += argument
+		elif op == 'nop':
+			pass
+		i += 1
 
+
+def solve_one(data: str) -> int:
+	return run_program(parse_instructions(data))[0]
 
 
 def test_one():
@@ -72,17 +56,22 @@ acc +1
 jmp -4
 acc +6''') == 5
 	print(solve_one(data))
-test_one()
+
 
 def solve_two(data: str):
-	ORIG_OPS = [(op.split(' ')[0], int(op.split(' ')[1])) for op in data.split('\n')]
-	for i in range(len(ORIG_OPS)):
-		if ORIG_OPS[i][0] not in ['jmp', 'nop']:
+	ops = parse_instructions(data)
+	for i in range(len(ops)):
+		if ops[i][0] not in ('jmp', 'nop'):
 			continue
-		ops = [[op.split(' ')[0], int(op.split(' ')[1])] for op in data.split('\n')]
-		ops[i][0] = 'nop' if ops[i][0] == 'jmp' else 'jmp'
-		if is_program_good(ops):
-			return run_program(ops)
+
+		orig_op = ops[i]
+		ops[i] = (
+			'nop' if ops[i][0] == 'jmp' else 'jmp',
+			ops[i][1]
+		)
+		if not (result := run_program(ops))[1]:
+			return result[0]
+		ops[i] = orig_op
 
 
 def test_two():
@@ -98,4 +87,3 @@ acc +1
 jmp -4
 acc +6''') == 8
 	print(solve_two(data))
-test_two()
