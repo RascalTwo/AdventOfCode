@@ -1,23 +1,26 @@
 import os
-from typing import List
 import itertools
+
+from typing import List
+
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
-def is_good(preamble_length, index, target: int, nums: List[int]):
-	for a, b in itertools.combinations(nums[index-preamble_length:index], 2):
-		if a + b == target:
-			return True
-	return False
+def is_valid(considerables: List[int], target: int):
+	return any(a + b == target for a, b in itertools.combinations(considerables, 2))
+
+
+def find_rule_breaker(numbers: List[int], preamble_length: int):
+	return next(
+		number
+		for i, number in itertools.islice(enumerate(numbers), preamble_length, None)
+		if not is_valid(numbers[i - preamble_length:i], number)
+	)
+
 
 def solve_one(data: str, preamble_length: int):
-	nums = list(map(int, data.split('\n')))
-	for i, num in enumerate(nums):
-		if i < preamble_length:
-			continue
-		if not is_good(preamble_length, i, num, nums):
-			return num
+	return find_rule_breaker(list(map(int, data.split('\n'))), preamble_length)
 
 
 def test_one():
@@ -47,22 +50,19 @@ def test_one():
 
 
 def solve_two(data: str, preamble_length: int):
-	nums = list(map(int, data.split('\n')))
-	found = None
-	for i, num in enumerate(nums):
-		if i < preamble_length:
-			continue
-		if not is_good(preamble_length, i, num, nums):
-			found = num
-			break
-	for i in range(len(nums)):
-		for j in range(i, len(nums)):
-			if i == j:
+	numbers = list(map(int, data.split('\n')))
+	found = find_rule_breaker(numbers, preamble_length)
+
+	for i in range(len(numbers)):
+		for j in range(i + 2, len(numbers)):
+			considering = numbers[i:j]
+			total = sum(considering)
+			if total < found:
 				continue
-			if sum(nums[i:j]) != found:
-				continue
-			fnums = sorted(nums[i:j])
-			return fnums[0] + fnums[-1]
+			elif total > found:
+				break
+
+			return sum(sorted(considering)[::len(considering) - 1])
 
 
 def test_two():
@@ -89,3 +89,4 @@ def test_two():
 309
 576''', 5) == 62
 	print(solve_two(data, 25))
+test_two()
