@@ -1,65 +1,65 @@
 import os
-import re
-import math
 import itertools
-import copy
 
-from typing import Dict, List, Tuple
+from typing import Callable, List, Tuple
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
-def get_one_neighbors(matrix: List[List[str]], x: int, y: int) -> List[str]:
-	offsets = [
-		(-1, -1), (-1, 0), (-1, 1),
-		(0, -1),           (0, 1),
-		(1, -1), (1, 0), (1, 1),
-	]
-	ns = []
-	for xo, yo in offsets:
-		nx = x + xo
-		ny = y + yo
-		if nx < 0 or nx >= len(matrix) or ny < 0 or ny >= len(matrix[x]):
+def find_visible_target(matrix: Tuple[Tuple[str]], x: int, y: int, search_distance: int, stopper: Callable[[List[str]], bool] = lambda _: False) -> bool:
+	visible = []
+	for xo, yo in itertools.product((-1, 0, 1), repeat=2):
+		if xo == yo == 0:
 			continue
-		ns.append(matrix[nx][ny])
-	return [n for n in ns if n is not None]
 
-def process_one_matrix(matrix: List[List[str]]):
-	new_matrix = copy.deepcopy(matrix)
-	for x in range(len(matrix)):
-		for y in range(len(matrix[x])):
-			if matrix[x][y] == '.':
-				continue
-			ns = get_one_neighbors(matrix, x, y)
-			if '#' not in ns:
-				new_matrix[x][y] = '#'
-				continue
-			occ_count = ns.count('#')
-			if occ_count >= 4:
-				new_matrix[x][y] = 'L'
-				continue
-	return new_matrix
+		for i in range(1, search_distance + 1):
+			nx = x + (i * xo)
+			ny = y + (i * yo)
+			if nx < 0 or nx >= len(matrix) or ny < 0 or ny >= len(matrix[x]):
+				break
 
-def count_occupied(matrix: List[List[str]]) -> int:
-	count = 0
-	for row in matrix:
-		count += row.count('#')
-	return count
+			current = matrix[nx][ny]
+			if current == '.':
+				continue
+			visible += current
+			if stopper(visible):
+				return True
+			break
+
+	return False
+
+
+def process_matrix(matrix: Tuple[Tuple[str]], search_distance: int, occ_empty_max: int) -> Tuple[Tuple[str]]:
+	return tuple(
+		tuple(
+			('L' if find_visible_target(
+				matrix, x, y, search_distance,
+				(lambda visible: '#' in visible)
+				if current == 'L' else
+				(lambda visible: visible.count('#') == occ_empty_max)
+			) else '#') if current != '.' else '.'
+			for y, current in enumerate(row)
+		)
+		for x, row in enumerate(matrix)
+	)
+
+
+def solve(data: str, search_distance: int, occ_empty_max: int) -> int:
+	matrix: Tuple[Tuple[str]] = tuple(map(tuple, data.split('\n')))
+
+	while True:
+		new_matrix = process_matrix(matrix, search_distance, occ_empty_max)
+		if new_matrix == matrix:
+			break
+		matrix = new_matrix
+
+	return sum(row.count('#') for row in matrix)
+
 
 def solve_one(data: str):
-	matrix = list(map(list, data.split('\n')))
-	last_state = copy.deepcopy(matrix)
-	first = True
-	while matrix != last_state or first:
-		if first:
-			first = False
-
-		last_state = copy.deepcopy(matrix)
-		matrix = process_one_matrix(copy.deepcopy(matrix))
-
-	return count_occupied(matrix)
+	return solve(data, 1, 4)
 
 
 def test_one():
@@ -77,65 +77,10 @@ L.LLLLLL.L
 L.LLLLL.LL''') == 37
 	print(solve_one(data))
 
-def get_neighbors(matrix: List[List[str]], x: int, y: int) -> List[str]:
-	offsets = [
-		(-1, -1), (-1, 0), (-1, 1),
-		(0, -1),           (0, 1),
-		(1, -1), (1, 0), (1, 1),
-	]
-	ns = []
-	for xo, yo in offsets:
-		for i in range(1000000):
-			nx = x + xo + (i * xo)
-			ny = y + yo + (i * yo)
-			if nx < 0 or nx >= len(matrix) or ny < 0 or ny >= len(matrix[x]):
-				break
-			ns.append(matrix[nx][ny])
-			if ns[-1] != '.':
-				break
-	return [n for n in ns if n is not None]
-
-def test_gn():
-	get_neighbors(list(map(list, '''.......#.
-...#.....
-.#.......
-.........
-..#L....#
-....#....
-.........
-#........
-...#.....'''.split('\n'))), 4, 3)
-	#print(ns)
-test_gn()
-
-def process_matrix(matrix: List[List[str]]):
-	new_matrix = copy.deepcopy(matrix)
-	for x in range(len(matrix)):
-		for y in range(len(matrix[x])):
-			if matrix[x][y] == '.':
-				continue
-			ns = get_neighbors(matrix, x, y)
-			if '#' not in ns:
-				new_matrix[x][y] = '#'
-				continue
-			occ_count = ns.count('#')
-			if occ_count >= 5:
-				new_matrix[x][y] = 'L'
-				continue
-	return new_matrix
 
 def solve_two(data: str):
-	matrix = list(map(list, data.split('\n')))
-	last_state = copy.deepcopy(matrix)
-	first = True
-	while matrix != last_state or first:
-		if first:
-			first = False
-
-		last_state = copy.deepcopy(matrix)
-		matrix = process_matrix(copy.deepcopy(matrix))
-
-	return count_occupied(matrix)
+	rows = data.split('\n')
+	return solve(data, max(len(rows), len(rows[0])), 5)
 
 
 def test_two():
@@ -152,4 +97,3 @@ LLLLLLLLLL
 L.LLLLLL.L
 L.LLLLL.LL''') == 26
 	print(solve_two(data))
-test_two()
