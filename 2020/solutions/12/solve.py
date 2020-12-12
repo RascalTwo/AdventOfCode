@@ -1,52 +1,45 @@
 import os
-import re
-import math
-import itertools
 
-from typing import Dict, List, Tuple
+from typing import Iterator, MutableSequence, Sequence, Tuple
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
-dirs = {
+DIRECTIONS = {
 	'N': (0, 1),
 	'E': (1, 0),
-	'W': (-1, 0),
 	'S': (0, -1),
+	'W': (-1, 0),
 }
 
-leftlst = ['N', 'E', 'S', 'W']
-righlst = ['N', 'W', 'S', 'E']
 
-def solve_one(data: str):
-	directions = list(map(lambda line: (line[0], int(line[1:])), data.split('\n')))
-	x = 0
-	y = 0
-	dir = 'E'
-	for cmd, num in directions:
-		if cmd == 'F':
-			xo, yo = dirs[dir]
-			x += xo * num
-			y += yo * num
-		elif cmd in dirs:
-			xo, yo = dirs[cmd]
-			x += xo * num
-			y += yo * num
-		elif cmd in 'LR':
-			change = num // 90
-			if cmd == 'L':
-				ci = righlst.index(dir)
-				ci += change
-				ci %= len(righlst)
-				dir = righlst[ci]
-			elif cmd == 'R':
-				ci = leftlst.index(dir)
-				ci += change
-				ci %= len(leftlst)
-				dir = leftlst[ci]
-	return (abs(x - 0) + abs(y - 0))
+def parse_commands(data: str) -> Iterator[Tuple[str, int]]:
+	return map(lambda line: (line[0], int(line[1:])), data.split('\n'))
+
+
+def add_sequences(one: MutableSequence[int], two: Sequence[int], multiple: int = 1):
+	for i in range(len(one)):
+		one[i] += two[i] * multiple
+
+
+def solve_one(data: str) -> int:
+	ROTATIONS = list(DIRECTIONS.keys())
+
+	ship = [0, 0]
+	direction = 'E'
+
+	for command, argument in parse_commands(data):
+		if command in DIRECTIONS or command == 'F':
+			add_sequences(ship, DIRECTIONS[direction if command == 'F' else command], argument)
+		elif command in 'LR':
+			direction = ROTATIONS[
+				(ROTATIONS.index(direction) + (argument // 90) * (-1 if command == 'L' else 1)) % len(ROTATIONS)
+			]
+
+	return sum(map(abs, ship))
+
 
 def test_one():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
@@ -58,30 +51,23 @@ R90
 F11''') == 25
 	print(solve_one(data))
 
-def solve_two(data: str):
-	directions = list(map(lambda line: (line[0], int(line[1:])), data.split('\n')))
-	x = 0
-	y = 0
-	wx = 10
-	wy = 1
-	for cmd, num in directions:
-		if cmd == 'F':
-			x += wx * num
-			y += wy * num
-		elif cmd in dirs:
-			xo, yo = dirs[cmd]
-			wx += xo * num
-			wy += yo * num
-		elif cmd in 'LR':
-			if cmd == 'L':
-				while num:
-					wx, wy = -wy, wx
-					num -= 90
-			else:
-				while num:
-					wx, wy = wy, -wx
-					num -= 90
-	return abs(x) + abs(y)
+
+def solve_two(data: str) -> int:
+	ship = [0, 0]
+	waypoint = [10, 1]
+
+	for command, argument in parse_commands(data):
+		if command == 'F':
+			add_sequences(ship, waypoint, argument)
+		elif command in DIRECTIONS:
+			add_sequences(waypoint, DIRECTIONS[command], argument)
+		elif command in 'LR':
+			flipping_index = int(command == 'R')
+			for _ in range(0, argument, 90):
+				waypoint.reverse()
+				waypoint[flipping_index] *= -1
+
+	return sum(map(abs, ship))
 
 
 def test_two():
