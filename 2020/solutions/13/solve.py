@@ -1,38 +1,36 @@
 import os
-import re
 import math
-import itertools
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Union
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
-def solve_one(data: str):
-	num, rest = data.split('\n')
-	num = int(num)
-	rest = list(filter(lambda b: b != 'x', rest.split(',')))
-	rest = list(map(int, rest))
-	busses = {}
-	for bid in rest:
-		c = 0
-		dept = bid
-		while dept < num:
-			dept += bid
-			c += 1
-		busses[bid] = (c, dept)
-	least_bid = -1
-	least_diff = 999999
-	for bid, (count, dept) in busses.items():
-		diff = dept - num
-		if diff < least_diff:
-			least_diff = diff
-			least_bid = bid
+def parse_input(data: str) -> Tuple[int, List[Union[int, str]]]:
+	earliest, buss_ids = data.split('\n')
+	return int(earliest), [bid if bid == 'x' else int(bid) for bid in buss_ids.split(',')]
 
-	wait = busses[least_bid][1] - num
-	return least_bid * wait
+
+def solve_one(data: str):
+	earliest, buss_ids = parse_input(data)
+	active_buss_ids: List[int] = list(filter(lambda bid: isinstance(bid, int), buss_ids))
+
+	least = (float('inf'), (0, 0))
+	for bid in active_buss_ids:
+		count = earliest / bid
+		if int(count) != count:
+			count = int(count) + 1
+
+		bus_earliest = count * bid
+		minutes = bus_earliest - earliest
+		if minutes > least[0]:
+			continue
+
+		least = (minutes, (bid, minutes))
+
+	return math.prod(least[1])
 
 def test_one():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
@@ -41,51 +39,30 @@ def test_one():
 7,13,x,x,59,x,31,19''') == 295
 	print(solve_one(data))
 
-def solve_two(data: str):
-	num, rest = data.split('\n')
-	num = int(num)
-	rest = [int(bid) if bid != 'x' else bid for bid in rest.split(',')]
-	busses = {}
-	tc = 1
-	first_stamp = rest[0] * tc
-	while True:
-		fail = False
-		for i in range(len(rest)):
-			cbid = rest[i]
-			if cbid == 'x':
-				continue
-			dept = cbid
-			must_be = first_stamp + i
-			while dept < must_be:
-				dept += cbid
-			if dept != must_be:
-				tc += 1
-				first_stamp = rest[0] * tc
-				fail = True
-				break
-		if not fail:
-			return first_stamp
 
-def lcm(a, b):
+def lcm(a: int, b: int):
   return abs(a*b) // math.gcd(a, b)
 
-def solve_two(data: str):
-	num, rest = data.split('\n')
-	num = int(num)
-	rest = [int(bid) if bid != 'x' else bid for bid in rest.split(',')]
-	bids = [(i, bid) for i, bid in enumerate(rest) if bid != 'x']
-	step = bids[0][1]
-	stamp = 0
-	correct = []
-	while len(correct) != len(bids):
-		minutes, bid = bids[len(correct)]
-		if (stamp + minutes) % bid != 0:
-			stamp += step
-		else:
-			step = lcm(step, bid)
-			correct.append(bid)
 
-	return stamp
+def solve_two(data: str):
+	buss_id_offsets: List[Tuple[int, int]] = [
+		(i, bid)
+		for i, bid in enumerate(parse_input(data)[1])
+		if bid != 'x'
+	]
+
+	timestamp = 0
+	step = buss_id_offsets[0][1]
+	remaining = len(buss_id_offsets)
+	while remaining:
+		minutes, bid = buss_id_offsets[remaining - len(buss_id_offsets)]
+		if (timestamp + minutes) % bid == 0:
+			step = lcm(step, bid)
+			remaining -= 1
+		else:
+			timestamp += step
+
+	return timestamp
 
 def test_two():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
