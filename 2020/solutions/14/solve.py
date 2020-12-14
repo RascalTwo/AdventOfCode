@@ -1,40 +1,34 @@
 import os
 import re
-import math
-import itertools
 
-from typing import Dict, List, Tuple
+from typing import Iterator, List, Tuple
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
+def parse_input(data: str) -> Iterator[Tuple[str, List[Tuple[int, int]]]]:
+	for mask, *assignments in (chunk.strip().split('\n') for chunk in data.split('mask = ')[1:]):
+		yield (
+			mask,
+			list(map(
+				lambda assignment: tuple(map(int, re.search(r'\[(\d+)\] = (\d+)', assignment).groups())),
+				assignments
+			))
+		)
 
-import collections
 
 def solve_one(data: str):
-	chunks = data.split('mask = ')[1:]
-	values = collections.defaultdict(lambda: 0)
-	for chunk in chunks:
-		chunk = chunk.strip()
-		mask = chunk.split('\n')[0][::-1]
-		assignments = list(map(lambda assign: (
-			int(assign.split('[')[1].split(']')[0]),
-			bin(int(assign.split(' = ')[1]))[2:][::-1]
-		), chunk.split('\n')[1:]))
+	registers = {}
+	for mask, assignments in parse_input(data):
 		for key, value in assignments:
-			new_value = []
-			for i in range(len(mask)):
-				if i < len(value):
-					mv = mask[i]
-					vv = value[i]
-					new_value.append(vv if mv == 'X' else mv)
-				else:
-					new_value.append('0' if mask[i] == 'X' else mask[i])
-			new_value.reverse()
-			values[key] = int(''.join(new_value), 2)
-	
-	return sum(v for v in values.values())
+			value = bin(value)[2:].rjust(36, '0')
+			registers[key] = int(''.join([
+				('0' if i >= len(value) else value[i]) if mask_bit == 'X' else mask_bit
+				for i, mask_bit in enumerate(mask)
+			]), 2)
+
+	return sum(registers.values())
 
 
 def test_one():
@@ -46,91 +40,40 @@ mem[7] = 101
 mem[8] = 0''') == 165
 	print(solve_one(data))
 
-def gen_paths(key: List[str]) -> List[List[str]]:
-	paths = []
-	for i, char in enumerate(key):
-		if char == 'X':
-			for v in ('0', '1'):
-				lst = key[:]
-				lst[i] = v
-				paths.append(lst)
-	return paths
 
-def gen_keys(key: List[str]) -> List[str]:
-	possible = []
-	paths = []
-	for path in gen_paths(key):
-		if 'X' in path:
-			paths.append(path)
-		else:
-			possible.append(path)
-	while True:
-		all_done = True
-		iter_paths = paths
-		paths = []
-		for path in iter_paths:
-			if 'X' in path:
-				for new_path in gen_paths(path):
-					if 'X' in new_path:
-						paths.append(new_path)
-					else:
-						possible.append(new_path)
-				all_done = False
-		if all_done:
-			break
-	return list(''.join(res) for res in possible)
-
-
-def gen_keys(orig: List[str]) -> List[str]:
+def generate_possible_binary_values(orig: List[str]) -> List[str]:
 	keys = [orig]
-	for i, v in enumerate(orig):
-		if v != 'X':
+	for i, char in enumerate(orig):
+		if char != 'X':
 			for key in keys:
-				key[i] = v
+				key[i] = char
 			continue
+
 		new_keys = []
-		for p in ('1', '0'):
-			for key in keys:
-				key[i] = p
+		for key in keys:
+			for value in ('1', '0'):
+				key[i] = value
 				new_keys.append(key[:])
 		keys = new_keys
-	return [''.join(key) for key in keys]
 
-kys = gen_keys(list('00X010X0'))
+	return [''.join(key) for key in keys]
 
 
 def solve_two(data: str):
-	chunks = data.split('mask = ')[1:]
-	values = collections.defaultdict(lambda: 0)
-	for chunk in chunks:
-		chunk = chunk.strip()
-		mask = chunk.split('\n')[0][::-1]
-		assignments: List[Tuple[str, int]] = list(map(lambda assign: (
-			bin(int(assign.split('[')[1].split(']')[0]))[2:][::-1],
-			int(assign.split(' = ')[1])
-		), chunk.split('\n')[1:]))
+	registers = {}
+	for mask, assignments in parse_input(data):
 		for key, value in assignments:
-			new_key = []
-			for i in range(len(mask)):
-				if i < len(key):
-					mv = mask[i]
-					kk = key[i]
-					if mv == 'X':
-						new_key.append('X')
-					elif mv == '1':
-						new_key.append('1')
-					elif mv == '0':
-						new_key.append(kk)
-				else:
+			key = bin(key)[2:].rjust(36, '0')
 
-					new_key.append(mask[i])
-			new_key.reverse()
-			possible_keys = gen_keys(new_key)
-			for key in possible_keys:
-				values[int(key, 2)] = value
-			pass
+			registers.update({
+				int(possible, 2): value
+				for possible in generate_possible_binary_values([
+					mask_bit if i >= len(key) else key[i] if mask_bit == '0' else mask_bit
+					for i, mask_bit in enumerate(mask)
+				])
+			})
 
-	return sum(v for v in values.values())
+	return sum(registers.values())
 
 
 def test_two():
