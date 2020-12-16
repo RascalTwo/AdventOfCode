@@ -1,37 +1,53 @@
 import os
-import re
 import math
-import itertools
+import collections
 
-from typing import Dict, List, Tuple
+from typing import Any, DefaultDict, Dict, List, Sequence, Tuple
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
-def parse_range(rg: str):
-	min, max = rg.split('-')
+
+def flatten(lst: Sequence[Sequence[Any]]) -> Sequence[Any]:
+	return [item for sublist in lst for item in sublist]
+
+
+def parse_dash_range(dash_range: str):
+	min, max = dash_range.split('-')
 	return range(int(min), int(max)+1)
 
-def get_tickets(key: str, data: str):
-	return list(map(int, ','.join(data.split(key + ':\n')[1].split('\n\n')[0].split('\n')).split(',')))
+
+def get_ticket_values(key: str, data: str):
+	return list(map(
+		lambda line: list(map(int, line.split(','))),
+		data.split(key + ':\n')[1].split('\n\n')[0].split('\n')
+	))
+
+
+def parse_input(data: str) -> Tuple[Dict[str, List[range]], List[List[int]], List[List[int]]]:
+	return (
+		{
+			rule.split(':')[0]: list(map(
+				parse_dash_range,
+				rule.split(': ')[1].split(' or ')
+			))
+			for rule in data.split('\n\n')[0].split('\n')
+		},
+		get_ticket_values('your ticket', data),
+		get_ticket_values('nearby tickets', data)
+	)
+
 
 def solve_one(data: str):
-	raw_rules = data.split('\n\n')[0]
-	rules = {rule.split(':')[0]: list(map(parse_range, rule.split(': ')[1].split(' or '))) for rule in raw_rules.split('\n')}
+	rules, _, nearby_tickets = parse_input(data)
 
-	mine = get_tickets('your ticket', data)
-	nearby = get_tickets('nearby tickets', data)
-	invalid = []
-	for v in nearby:
-		good = False
-		for ranges in rules.values():
-			for rangee in ranges:
-				if v in rangee:
-					good = True
-		if not good:
-			invalid.append(v)
-	return sum(invalid)
+	all_ranges = flatten(list(rules.values()))
+	return sum([
+		value
+		for value in flatten(nearby_tickets)
+		if all(value not in range_ for range_ in all_ranges)
+	])
 
 def test_one():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
@@ -50,66 +66,59 @@ nearby tickets:
 38,6,12''') == 71
 	print(solve_one(data))
 
+
 def solve_two(data: str):
-	raw_rules = data.split('\n\n')[0]
-	rules = {rule.split(':')[0]: list(map(parse_range, rule.split(': ')[1].split(' or '))) for rule in raw_rules.split('\n')}
-	mine = get_tickets('your ticket', data)
-	nearby = list(map(lambda line: list(map(int, line.split(','))), data.split('nearby tickets:\n')[1].split('\n\n')[0].split('\n')))
-	new_nearby = []
-	invalid = []
-	new_t = []
-	for t in nearby:
-		any_invalid = False
-		for v in t:
-			good = False
-			for ranges in rules.values():
-				for rangee in ranges:
-					if v in rangee:
-						good = True
-			if not good:
-				invalid.append(v)
-				any_invalid = True
-		if not any_invalid:
-			new_t.append(t)
-		#new_nearby.append(new_t)
-	#n = len(mine)
-	#new_nearby = [new_t[i * n:(i + 1) * n] for i in range((len(new_t) + n - 1) // n )]  
-	import collections
-	rule_valid_columns: DefaultDict[str, List[int]] = collections.defaultdict(list)
-	for i in range(len(mine)):
-		values = [t[i] for t in new_t]
-		for rule, ranges in rules.items():
-			good = True
-			for value in values:
-				good = any(value in rangee for rangee in ranges)
-				if not good:
-					break
-			if good:
-				rule_valid_columns[rule].append(i)
-	
-	dict_ts = []
-	sorted_things = sorted(rule_valid_columns.items(), key=lambda pair: len(pair[1]))
-	for i in range(len(sorted_things)):
-		rule, values = sorted_things[i]
-		value = values[0]
-		for _, other_values in sorted_things:
+	rules, your_tickets, nearby_tickets = parse_input(data)
+
+	all_ranges = flatten(list(rules.values()))
+	valid_tickets = [
+		ticket
+		for ticket in nearby_tickets
+		if all(any(value in range_ for range_ in all_ranges) for value in ticket)
+	]
+
+	valid_rule_columns = sorted({
+		rule: [
+			c
+			for c in range(len(your_tickets[0]))
+			if all(
+				any(value in range_ for range_ in ranges)
+				for value in (ticket[c] for ticket in valid_tickets)
+			)]
+		for rule, ranges in rules.items()
+	}.items(), key=lambda pair: len(pair[1]))
+
+
+	your_dict_tickets: DefaultDict[int, Dict[str, int]] = collections.defaultdict(dict)
+
+	for rule, (value, *_) in valid_rule_columns:
+		for _, other_values in valid_rule_columns:
 			if value in other_values:
 				other_values.remove(value)
-		for t in new_t:
-			t[value] = (rule, t[value])
-		mine[value] = (rule, mine[value])
-	
-	#for t in new_t:
-	ttl = []
-	for rule, value in mine:
-		if not rule.startswith('departure'):
-			continue
-		ttl.append(value)
-	import math
-	return math.prod(ttl)
+
+		for i, ticket in enumerate(your_tickets):
+			your_dict_tickets[i][rule] = ticket[value]
+
+	return math.prod(
+		value
+		for ticket in your_dict_tickets.values()
+		for key, value in ticket.items()
+		if key.startswith('departure')
+	)
 
 
 def test_two():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
 		data = input_file.read()
+	assert solve_two('''departure class: 0-1 or 4-19
+departure row: 0-5 or 8-19
+seat: 0-13 or 16-19
+
+your ticket:
+11,12,13
+
+nearby tickets:
+3,9,18
+15,1,5
+5,14,9''') == 132
 	print(solve_two(data))
