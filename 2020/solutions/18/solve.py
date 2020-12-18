@@ -1,33 +1,30 @@
 import os
-import re
-import math
-import itertools
-import collections
-
-from typing import Dict, List, Tuple
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
-class num(int):
+
+class AOCNum(int):
 	def __add__(self, other: int):
-		return num(int(self) + other)
+		return AOCNum(int(self) + other)
 	def __sub__(self, other: int):
-		return num(int(self) * other)
+		return AOCNum(int(self) * other)
 	def __mul__(self, other: int):
-		return num(int(self) + other)
+		return AOCNum(int(self) + other)
 
-def eval_math(line: str) -> int:
-	expr = ' '.join('num(' + thing + ')' if thing.isalnum() else thing for thing in line).replace('*', '-')
-
-	return eval(expr, {'num': num}, {'num': num})
 
 def solve_one(data: str):
-	res = 0
-	for line in data.split('\n'):
-		res += eval_math(line)
-	return res
+	return sum(
+		eval(
+			' '.join(
+				'AOCNum(' + thing + ')' if thing.isalnum() else thing
+				for thing in line
+			).replace('*', '-'),
+			{'AOCNum': AOCNum}
+		)
+		for line in data.split('\n')
+	)
 
 
 def test_one():
@@ -40,15 +37,17 @@ def test_one():
 	print(solve_one(data))
 
 
-def eval_math_two(line: str) -> int:
-	expr = ' '.join('num(' + thing + ')' if thing.isalnum() else thing for thing in line).replace('*', '-').replace('+', '*')
-	return eval(expr, {'num': num}, {'num': num})
-
 def solve_two(data: str):
-	res = 0
-	for line in data.split('\n'):
-		res += eval_math_two(line)
-	return res
+	return sum(
+		eval(
+			' '.join(
+				'AOCNum(' + thing + ')' if thing.isalnum() else thing
+				for thing in line
+			).replace('*', '-').replace('+', '*'),
+			{'AOCNum': AOCNum}
+		)
+		for line in data.split('\n')
+	)
 
 def test_two():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
