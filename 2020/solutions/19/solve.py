@@ -1,53 +1,55 @@
 import os
 import re
-import math
-import itertools
-import collections
+import functools
 
-from typing import Dict, List, Tuple, Set, Any
+from typing import Dict, List, Union
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
-def build_regex(chars: dict, rules: dict, num: int, depth: int = 0):
-		if num in chars:
-			return chars[num]
 
-		if depth == 100:
+RuleValue = Union[str, List[List[int]]]
+RuleMap = Dict[int, RuleValue]
+
+
+def build_regex(rules: RuleMap, value: RuleValue, max_depth: int, depth: int) -> str:
+		if isinstance(value, str):
+			return value
+
+		if depth == max_depth:
 			return ''
 
-		parts = []
-		for part in rules[num]:
-			parts.append(''.join(build_regex(chars, rules, n, depth + 1) for n in part))
-		return '(' + '|'.join(parts) + ')'
+		return (
+			'(' +
+			'|'.join(
+				''.join(
+					build_regex(rules, rules[num], max_depth, depth + 1) for num in part
+				)
+				for part in value
+			) +
+			')'
+		)
 
-def parse_rules(data: str, two = False):
-	ref_rules = {}
-	char_map = {}
 
-	for line in data.split('\n'):
-		num, rest = line.split(': ')
-		num = int(num)
-		if two:
-			if num == 8:
-				rest = '42 | 42 8'
-			elif num == 11:
-				rest = '42 31 | 42 11 31'
-		if '"' in rest:
-			char_map[num] = rest.split('"')[1].split('"')[0]
-			continue
-		ref_rules[num] = [list(map(int, part.strip().split(' '))) for part in rest.split('|')]
+def parse_rules(data: str, max_depth: int = -1) -> str:
+	rules = {
+		int(halves[0]): (
+			halves[1].split('"')[1].split('"')[0]
+			if '"' in halves[1] else
+			[list(map(int, part.split(' '))) for part in halves[1].split(' | ')]
+		)
+		for line in data.split('\n')
+		if (halves := line.split(': '))
+	}
 
-	return build_regex(char_map, ref_rules, 0)
+	return build_regex(rules, rules[0], max_depth, 0)
+
 
 def solve_one(data: str):
-	zero = parse_rules(data.split('\n\n')[0])
-	good = 0
-	for line in data.split('\n\n')[1].split('\n'):
-		if re.match('^' + zero + '$', line):
-			good += 1
-	return good
+	rules, messages = data.split('\n\n')
+	regex = parse_rules(rules)
+	return sum(bool(re.fullmatch(regex, message)) for message in messages.split('\n'))
 
 
 def test_one():
@@ -69,12 +71,10 @@ aaaabbb''') == 2
 
 
 def solve_two(data: str):
-	zero = parse_rules(data.split('\n\n')[0], True)
-	good = 0
-	for line in data.split('\n\n')[1].split('\n'):
-		if re.match('^' + zero + '$', line):
-			good += 1
-	return good
+	rules, messages = data.split('\n\n')
+	longest_rule: int = functools.reduce(lambda a, b: a if a > b else b, map(len, messages.split('\n')), 0)
+	regex = parse_rules(rules.replace('8: 42', '8: 42 | 42 8').replace('11: 42 31', '11: 42 31 | 42 11 31'), longest_rule)
+	return sum(bool(re.match('^' + regex + '$', message)) for message in messages.split('\n'))
 
 
 def test_two():
