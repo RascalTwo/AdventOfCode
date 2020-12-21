@@ -4,16 +4,17 @@ import math
 import itertools
 import collections
 
-from typing import DefaultDict, Dict, List, Optional, Set, Tuple
+from typing import DefaultDict, Dict, Generic, List, MutableSequence, Optional, Set, Tuple, TypeVar, cast
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
-Matrix = List[List[str]]
+T = TypeVar('T')
+Matrix = List[List[T]]
 
-def rotate_matrix_right(m: Matrix) -> Matrix:
+def rotate_matrix_right(m: Matrix[T]) -> Matrix[T]:
 	"""
 	>>> rotate_matrix_right([['A', 'B', 'C'], ['D', 'E', 'F'], ['G', 'H', 'I']])
 	[['G', 'D', 'A'], ['H', 'E', 'B'], ['I', 'F', 'C']]
@@ -22,7 +23,8 @@ def rotate_matrix_right(m: Matrix) -> Matrix:
 	"""
 	return [list(row) for row in zip(*m[::-1])]
 
-def rotate_matrix_left(m: Matrix) -> Matrix:
+
+def rotate_matrix_left(m: Matrix[T]) -> Matrix[T]:
 	"""
 	>>> rotate_matrix_left([['A', 'B', 'C'], ['D', 'E', 'F'], ['G', 'H', 'I']])
 	[['C', 'F', 'I'], ['B', 'E', 'H'], ['A', 'D', 'G']]
@@ -31,7 +33,8 @@ def rotate_matrix_left(m: Matrix) -> Matrix:
 	"""
 	return [list(row)[::-1] for row in zip(*m[::-1])][::-1]
 
-def flip_matrix_vertically(m: Matrix) -> Matrix:
+
+def flip_matrix_vertically(m: Matrix[T]) -> Matrix[T]:
 	"""
 	>>> flip_matrix_vertically([['A', 'B', 'C'], ['D', 'E', 'F'], ['G', 'H', 'I']])
 	[['G', 'H', 'I'], ['D', 'E', 'F'], ['A', 'B', 'C']]
@@ -40,7 +43,8 @@ def flip_matrix_vertically(m: Matrix) -> Matrix:
 	"""
 	return m[::-1]
 
-def flip_matrix_horizontally(m: Matrix) -> Matrix:
+
+def flip_matrix_horizontally(m: Matrix[T]) -> Matrix[T]:
 	"""
 	>>> flip_matrix_horizontally([['A', 'B', 'C'], ['D', 'E', 'F'], ['G', 'H', 'I']])
 	[['C', 'B', 'A'], ['F', 'E', 'D'], ['I', 'H', 'G']]
@@ -50,131 +54,79 @@ def flip_matrix_horizontally(m: Matrix) -> Matrix:
 	return [list(reversed(row)) for row in m]
 
 
-def generate_matrix_variations(m: Matrix) -> List[Matrix]:
-	variations = []
-	for combo in itertools.permutations((rotate_matrix_left, rotate_matrix_right, flip_matrix_vertically, flip_matrix_horizontally)):
-		new_m = m
-		for method in combo:
-			new_m = method(new_m)
-			if new_m not in variations:
-				variations.append(new_m)
-		if new_m not in variations:
-			variations.append(new_m)
-	return variations
+def generate_matrix_variations(m: Matrix[T]) -> List[Matrix[T]]:
+	left = rotate_matrix_left(m)
+	right = rotate_matrix_right(m)
+	return [
+		m,
+		left,
+		right,
+		rotate_matrix_right(right),
+		flip_matrix_horizontally(m),
+		flip_matrix_vertically(m),
+		flip_matrix_horizontally(left),
+		flip_matrix_horizontally(right)
+	]
 
-def get_matrix_column(m: Matrix, c: int):
-	return [row[c] for row in m]
 
-def is_valid(image: List[List[Optional[Matrix]]]):
-	for i in range(len(image)):
-		for j in range(len(image[i])):
-			current = image[i][j]
-			if current is None:
-				continue
+def get_matrix_column(m: Matrix[T], i: int) -> List[T]:
+	return [row[i] for row in m]
 
-			if i:
-				if (other := image[i - 1][j]) and current[0] != other[-1]:
-					return False
-			if i != len(image)-1:
-				if (other := image[i + 1][j]) and current[-1] != other[0]:
-					return False
-			if j:
-				if (other := image[i][j - 1]) and get_matrix_column(current, 0) != get_matrix_column(other, -1):
-					return False
-			if j != len(image[i]) - 1:
-				if (other := image[i][j + 1]) and get_matrix_column(current, -1) != get_matrix_column(other, 0):
-					return False
+
+def is_valid(image: List[List[Optional[Matrix[T]]]], size: int):
+	for i, j in itertools.product(range(size), range(size)):
+		current = image[i][j]
+		if current is None:
+			continue
+
+		if i and (other := image[i - 1][j]) and current[0] != other[-1]:
+			return False
+		elif i != size - 1 and (other := image[i + 1][j]) and current[-1] != other[0]:
+			return False
+		elif j and (other := image[i][j - 1]) and get_matrix_column(current, 0) != get_matrix_column(other, -1):
+			return False
+		elif j != size - 1 and (other := image[i][j + 1]) and get_matrix_column(current, -1) != get_matrix_column(other, 0):
+			return False
 
 	return True
 
-def solve_one(data: str):
-	tiles: Dict[int, Matrix] = {
-		int(full_tile.split('Tile ')[1].split(':')[0]): list(map(list, full_tile.split(':\n')[1].strip().split('\n')))
+
+def parse_input(data: str) -> Dict[int, Matrix[str]]:
+	return {
+		int(full_tile.split('Tile ')[1].split(':')[0]): list(map(list, full_tile.split(':\n')[1].strip().split('\n')))  # type: ignore
 		for full_tile in data.split('\n\n')
 	}
-	tile_edges: DefaultDict[int, Set[Tuple[str]]] = collections.defaultdict(lambda: set())
-	for tile, m in tiles.items():
-		rotated = rotate_matrix_right(m)
-		tile_edges[tile].update(tuple(edge) for edge in (
+
+
+def get_tile_types(tiles: Dict[int, Matrix[T]]) -> Tuple[List[int], List[int], List[int]]:
+	tile_edges = {
+		tile: set(tuple(edge) for edge in (
 			m[0], m[0][::-1],
 			m[-1], m[-1][::-1],
 			rotated[0], rotated[0][::-1],
 			rotated[-1], rotated[-1][::-1],
 		))
+		for tile, m in tiles.items()
+		if (rotated := rotate_matrix_right(m))
+	}
 
-	corners: List[int] = []
-	edges: List[int] = []
-	rest: List[int] = []
+	corners = []
+	edges = []
+	middles = []
 	for tile, t_edges in tile_edges.items():
-		shared = set()
-		for other_t, other_edges in tile_edges.items():
-			if tile == other_t:
-				continue
-			shared.update(t_edges.intersection(other_edges))
-		(corners, edges, rest)[int(((len(shared)-2)/2)-1)].append(tile)
+		(corners, edges, middles)[
+			int(((len(set().union(*(
+					t_edges.intersection(o_edges)
+					for other, o_edges in tile_edges.items()
+					if tile != other
+			))) - 2) / 2) - 1)
+		].append(tile)
 
-	size = int(math.sqrt(len(tiles)))
+	return corners, edges, middles
 
-	corner_locs = set([(0,0), (size - 1, size - 1), (0, size - 1), (size - 1, 0)])
-	edge_locs = set([
-		*((0, i) for i in range(size)),
-		*((i, 0) for i in range(size)),
-		*((size - 1, i) for i in range(size)),
-		*((i, size - 1) for i in range(size))
-	])
-	edge_locs = list(filter(lambda edge_loc: edge_loc not in corner_locs, edge_locs))
-	image: List[List[Optional[Matrix]]] = []
-	for _ in range(size):
-		image.append([None] * size)
 
-	orig_corners = corners[:]
-	corner_tile = tiles[corners.pop(0)]
-	for c_variation in generate_matrix_variations(corner_tile):
-		corner_edges = edges[:]
-		image[0][0] = c_variation
-		for ni, nj in ((1, 0), (0, 1)):
-			done = False
-			for pid in corner_edges:
-				for n_variation in generate_matrix_variations(tiles[pid]):
-					image[ni][nj] = n_variation
-					if is_valid(image):
-						corner_edges.remove(pid)
-						done = True
-						break
-					image[ni][nj] = None
-				if done:
-					break
-				if all(image[ni][nj] for ni, nj in ((0, 1), (1, 0))):
-					break
-			if all(image[ni][nj] for ni, nj in ((0, 1), (1, 0))):
-				break
-		if all(image[ni][nj] for ni, nj in ((0, 1), (1, 0))):
-			break
-
-	assert all(image[ni][nj] for ni, nj in ((0, 1), (1, 0))), 'Corner not filled'
-
-	edges = corner_edges
-
-	for i in range(size):
-		for j in range(size):
-			if image[i][j]:
-				continue
-			loc = (i, j)
-			possible = (corners, edges, rest)[0 if loc in corner_locs else 1 if loc in edge_locs else 2]
-			done = False
-			for pid in possible:
-				for variation in generate_matrix_variations(tiles[pid]):
-					image[i][j] = variation
-					if is_valid(image):
-						possible.remove(pid)
-						done = True
-						break
-					image[i][j] = None
-				if done:
-					break
-	assert is_valid(image)
-	return math.prod(orig_corners)
-
+def solve_one(data: str):
+	return math.prod(get_tile_types(parse_input(data))[0])
 
 
 def test_one():
@@ -290,140 +242,109 @@ Tile 3079:
 	print(solve_one(data))
 
 
+def try_tiles_in_image(image: List[List[Optional[Matrix[str]]]], size: int, i: int, j: int, tile_ids: MutableSequence[int], tiles: Dict[int, Matrix[str]]):
+	for eid in tile_ids:
+		for e_variation in generate_matrix_variations(tiles[eid]):
+			image[i][j] = e_variation
+			if not is_valid(image, size):
+				image[i][j] = None
+				continue
+			tile_ids.remove(eid)
+			return True
+	return False
 
-def shrink_matrix(m: Matrix):
-	del m[0]
-	del m[-1]
-	for row in m:
-		del row[0]
-		del row[-1]
 
 def solve_two(data: str):
-	tiles: Dict[int, Matrix] = {
-		int(full_tile.split('Tile ')[1].split(':')[0]): list(map(list, full_tile.split(':\n')[1].strip().split('\n')))
-		for full_tile in data.split('\n\n')
-	}
-	tile_edges: DefaultDict[int, Set[Tuple[str]]] = collections.defaultdict(lambda: set())
-	for tile, m in tiles.items():
-		rotated = rotate_matrix_right(m)
-		tile_edges[tile].update(tuple(edge) for edge in (
-			m[0], m[0][::-1],
-			m[-1], m[-1][::-1],
-			rotated[0], rotated[0][::-1],
-			rotated[-1], rotated[-1][::-1],
-		))
-
-	corners: List[int] = []
-	edges: List[int] = []
-	rest: List[int] = []
-	for tile, t_edges in tile_edges.items():
-		shared = set()
-		for other_t, other_edges in tile_edges.items():
-			if tile == other_t:
-				continue
-			shared.update(t_edges.intersection(other_edges))
-		(corners, edges, rest)[int(((len(shared)-2)/2)-1)].append(tile)
+	tiles = parse_input(data)
+	corners, edges, middles = get_tile_types(tiles)
 
 	size = int(math.sqrt(len(tiles)))
-
 	corner_locs = set([(0,0), (size - 1, size - 1), (0, size - 1), (size - 1, 0)])
-	edge_locs = set([
+	edge_locs = set(edge_loc for edge_loc in (
 		*((0, i) for i in range(size)),
 		*((i, 0) for i in range(size)),
 		*((size - 1, i) for i in range(size)),
 		*((i, size - 1) for i in range(size))
-	])
-	edge_locs = list(filter(lambda edge_loc: edge_loc not in corner_locs, edge_locs))
-	image: List[List[Optional[Matrix]]] = []
-	for _ in range(size):
-		image.append([None] * size)
+	) if edge_loc not in corner_locs)
+
+	image: Matrix[Optional[Matrix[str]]] = [[None] * size for _ in range(size)]
 
 	corner_tile = tiles[corners.pop(0)]
+	corner_edges = edges[:]
 	for c_variation in generate_matrix_variations(corner_tile):
-		corner_edges = edges[:]
 		image[0][0] = c_variation
-		for ni, nj in ((1, 0), (0, 1)):
-			done = False
-			for pid in corner_edges:
-				for n_variation in generate_matrix_variations(tiles[pid]):
-					image[ni][nj] = n_variation
-					if is_valid(image):
-						corner_edges.remove(pid)
-						done = True
-						break
-					image[ni][nj] = None
-				if done:
-					break
-				if all(image[ni][nj] for ni, nj in ((0, 1), (1, 0))):
-					break
-			if all(image[ni][nj] for ni, nj in ((0, 1), (1, 0))):
-				break
-		if all(image[ni][nj] for ni, nj in ((0, 1), (1, 0))):
+		if all(try_tiles_in_image(image, size, i, j, corner_edges, tiles) for i, j in ((1, 0), (0, 1))):
 			break
 
-	assert all(image[ni][nj] for ni, nj in ((0, 1), (1, 0))), 'Corner not filled'
-
+		corner_edges = edges[:]
 	edges = corner_edges
 
-	for i in range(size):
-		for j in range(size):
-			if image[i][j]:
-				continue
-			loc = (i, j)
-			possible = (corners, edges, rest)[0 if loc in corner_locs else 1 if loc in edge_locs else 2]
-			done = False
-			for pid in possible:
-				for variation in generate_matrix_variations(tiles[pid]):
-					image[i][j] = variation
-					if is_valid(image):
-						possible.remove(pid)
-						done = True
-						break
-					image[i][j] = None
-				if done:
-					break
 
-	for row in image:
-		for matrix in row:
-			assert matrix
+	for i, j in itertools.product(range(size), repeat=2):
+		if image[i][j]:
+			continue
 
-	for row in image:
-		for matrix in row:
-			shrink_matrix(matrix)
+		loc = (i, j)
+		possible = (corners, edges, middles)[
+			0 if loc in corner_locs else 1 if loc in edge_locs else 2
+		]
 
-	full_image = []
-	char_size = len(image[0][0]) * size
-	for _ in range(char_size):
-		full_image.append([] * char_size)
+		try_tiles_in_image(image, size, i, j, possible, tiles)
 
+
+	for img_row in image:
+		for matrix in img_row:
+			del matrix[0]
+			del matrix[-1]
+			for row in matrix:
+				del row[0]
+				del row[-1]
+
+	full_size = len(image[0][0]) * size
+	full_image = [[] * full_size for _ in range(full_size)]
+
+	tile_size = len(image[0][0])
 	for i, tile_row in enumerate(image):
-		for _, matrix in enumerate(tile_row):
-			for j, mrow in enumerate(matrix):
-				full_image[(i * len(image[0][0])) + j] += mrow
+		for matrix in tile_row:
+			for j, row in enumerate(matrix):
+				full_image[(i * tile_size) + j] += row
+
 
 	regexes = [
-		'.{18}#.',
-		'#.{4}##.{4}##.{4}###',
-		'.#.{2}#.{2}#.{2}#.{2}#.{2}#...'
+		'..................#.',
+		'#....##....##....###',
+		'.#..#..#..#..#..#...'
 	]
+	regexes_width = len(regexes[0])
+	rows = full_size - len(regexes) - 1
+	columns = full_size - regexes_width
+
 	roughest = 0
-	most_monsters = []
-	monsters = []
+	most_monsters = 0
 	for variation in generate_matrix_variations(full_image):
-		for i in range(len(variation) - 2):
-			for j in range(len(variation[i]) - 20):
-				if not (start := re.search(regexes[0], ''.join(variation[i][j:j+20]))):
+		monsters = 0
+		for i, j in itertools.product(range(rows), range(columns)):
+			start = None
+			for l, regex in enumerate(regexes):
+				match = re.search(regex, ''.join(variation[i + l][j:j + regexes_width]))
+				if not match:
+					start = None
+					break
+
+				if l == 0:
+					start = match.start()
 					continue
-				if not (middle := re.search(regexes[1], ''.join(variation[i + 1][j:j+20]))) or middle.start() != start.start():
-					continue
-				if not (end := re.search(regexes[2], ''.join(variation[i + 2][j:j+20]))) or end.start() != start.start():
-					continue
-				monsters.append((i, j))
-		if len(monsters) > len(most_monsters):
+
+				if match.start() != start:
+					start = None
+					break
+
+			if start is not None:
+				monsters += 1
+
+		if monsters > most_monsters:
 			most_monsters = monsters
-			roughest = -15 * len(monsters)
-			for row in variation:
-				roughest += row.count('#')
+			roughest = -15 * monsters + sum(row.count('#') for row in variation)
 
 	return roughest
 
