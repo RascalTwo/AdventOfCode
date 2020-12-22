@@ -1,36 +1,30 @@
 import os
-import re
-import math
-import itertools
-import collections
+import functools
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
-def solve_one(data: str):
-	decks = []
-	for raw_decks in data.split('\n\n'):
-		decks.append(list(map(int, raw_decks.split('\n')[1:])))
-	while decks[0] and decks[1]:
-		t1, t2 = decks[0].pop(0), decks[1].pop(0)
-		if t1 > t2:
-			decks[0].append(t1)
-			decks[0].append(t2)
-		elif t1 < t2:
-			decks[1].append(t2)
-			decks[1].append(t1)
-		else:
-			print('eq')
-		pass
+Deck = List[int]
 
-	score = 0
-	for i, c in enumerate(reversed(decks[0] if decks[0] else decks[1])):
-		score += c * (i+1)
-	return score
+def parse_decks(data: str) -> List[Deck]:
+	return [
+		list(map(int, raw_decks.split('\n')[1:]))
+		for raw_decks in data.split('\n\n')
+	]
+
+
+def solve_one(data: str):
+	decks = parse_decks(data)
+	while all(decks):
+		top_draws = [(i, deck.pop(0)) for i, deck in enumerate(decks)]
+		winner = functools.reduce(lambda d1, d2: d1 if d1[1] > d2[1] else d2, top_draws)[0]
+		decks[winner] += [card for _, card in sorted(top_draws, key=lambda draw: draw[0] != winner)]
+
+	return sum(card * (i + 1) for i, card in enumerate(reversed(next(deck for deck in decks if deck))))
 
 
 def test_one():
@@ -52,44 +46,31 @@ Player 2:
 	print(solve_one(data))
 
 
-def play_round(decks: List[List[int]]) -> Tuple[bool, int]:
-	history = []
+def play_round(decks: List[Deck]) -> Tuple[int, int]:
+	history = set()
 
-	while decks[0] and decks[1]:
-		now = (tuple(decks[0]), tuple(decks[1]))
+	while all(decks):
+		now = tuple(map(tuple, decks))
 		if now in history:
-			decks[1] = []
-			continue
-		history.append(now)
+			for i in range(1, len(decks)):
+				decks[i] = []
+			break
+		history.add(now)
 
-		t1, t2 = decks[0].pop(0), decks[1].pop(0)
-		if t1 <= len(decks[0]) and t2 <= len(decks[1]):
-			if play_round([decks[0][:t1], decks[1][:t2]])[0]:
-				decks[0].append(t1)
-				decks[0].append(t2)
-			else:
-				decks[1].append(t2)
-				decks[1].append(t1)
-		else:
-			if t1 > t2:
-				decks[0].append(t1)
-				decks[0].append(t2)
-			elif t1 < t2:
-				decks[1].append(t2)
-				decks[1].append(t1)
-		pass
+		top_draws = [(i, deck.pop(0)) for i, deck in enumerate(decks)]
+		winner = (
+			play_round([decks[i][:card] for i, card in top_draws])[0]
+			if all(card <= len(decks[i]) for i, card in top_draws) else
+			functools.reduce(lambda d1, d2: d1 if d1[1] > d2[1] else d2, top_draws)[0]
+		)
+		decks[winner] += [card for _, card in sorted(top_draws, key=lambda draw: draw[0] != winner)]
 
-	score = 0
-	for i, c in enumerate(reversed(decks[0] if decks[0] else decks[1])):
-		score += c * (i+1)
-	return True if decks[0] else False, score
+	winner = next((i, deck) for i, deck in enumerate(decks) if deck)
+	return winner[0], sum(card * (i + 1) for i, card in enumerate(reversed(winner[1])))
+
 
 def solve_two(data: str):
-	decks = []
-	for raw_decks in data.split('\n\n'):
-		decks.append(list(map(int, raw_decks.split('\n')[1:])))
-
-	return play_round(decks)[1]
+	return play_round(parse_decks(data))[1]
 
 
 def test_two():
