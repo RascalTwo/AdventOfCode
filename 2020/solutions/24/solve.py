@@ -1,50 +1,41 @@
 import os
-import re
-import math
-import itertools
-import collections
 
-from typing import DefaultDict, Dict, List, Optional, Tuple
+from typing import Set
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
-dirs = ['se', 'sw', 'nw', 'ne', 'w', 'e']
 
-offsets = {
-	'se': (0, -1, 1),
-	'sw': (-1, 0, 1),
-	'nw': (0, 1, -1),
-	'ne': (1, 0, -1),
-	'w': (-1, 1, 0),
-	'e': (1, -1, 0)
+DIRECTIONS = {
+	'nw':  0 + -1j,
+	'ne':  1 + -1j,
+	'e':   1 +  0j,
+	'se':  0 +  1j,
+	'sw': -1 +  1j,
+	'w':  -1 +  0j,
 }
+OFFSETS = DIRECTIONS.values()
+
+
+def flip_tiles(data: str):
+	black_tiles: Set[complex] = set()
+
+	for steps in data.strip().split('\n'):
+		loc = 0 + 0j
+
+		while steps:
+			dir = steps[0] + (steps[1] if steps[0] in 'sn' else '')
+			loc += DIRECTIONS[dir]
+			steps = steps[len(dir):]
+
+		getattr(black_tiles, 'remove' if loc in black_tiles else 'add')(loc)
+
+	return black_tiles
+
 
 def solve_one(data: str):
-	lines = data.strip().split('\n')
-	tiles: DefaultDict[Tuple[int, int, int], bool] = collections.defaultdict(lambda: False)
-	for line in lines:
-		x = 0
-		y = 0
-		z = 0
-
-		c = 0
-		while c < len(line):
-			nxt_dir = line[c]
-			if nxt_dir in 'sn':
-				nxt_dir += line[c + 1]
-			xo, yo, zo = offsets[nxt_dir]
-			x += xo
-			y += yo
-			z += zo
-			c += len(nxt_dir)
-		loc = (x, y, z)
-
-		tiles[loc] = not tiles[loc]
-
-	return sum(black for black in tiles.values())
-
+	return len(flip_tiles(data))
 
 
 def test_one():
@@ -79,49 +70,28 @@ wseweeenwnesenwwwswnew''') == 10
 
 
 def solve_two(data: str):
-	lines = data.strip().split('\n')
-	tiles: DefaultDict[Tuple[int, int, int], bool] = collections.defaultdict(lambda: False)
-	for line in lines:
-		x = 0
-		y = 0
-		z = 0
-
-		c = 0
-		while c < len(line):
-			nxt_dir = line[c]
-			if nxt_dir in 'sn':
-				nxt_dir += line[c + 1]
-			xo, yo, zo = offsets[nxt_dir]
-			x += xo
-			y += yo
-			z += zo
-			c += len(nxt_dir)
-		loc = (x, y, z)
-
-		tiles[loc] = not tiles[loc]
+	black_tiles = flip_tiles(data)
 
 	for _ in range(100):
-		new_tiles = tiles.copy()
-		targets = []
-		for (x, y, z), black in tiles.items():
-			targets.append((x, y, z))
-			for xo, yo, zo in offsets.values():
-				targets.append((x + xo, y + yo, z + zo))
+		black_tiles = {
+			loc
+			for loc in {loc for loc in black_tiles}.union(
+				black + off
+				for black in black_tiles
+				for off in OFFSETS
+			)
+			if (black_neighbors := sum(loc + off in black_tiles for off in OFFSETS))
+			and (
+				(loc in black_tiles and black_neighbors in (1, 2))
+				or (loc not in black_tiles and black_neighbors == 2)
+			)
+		}
+		# For every black tile and neighboring tile
+		#   count all the neighboring black tiles
+		#   if the current tile is black and there are 1 or 2 neighboring black tiles, keep by adding
+		#   else the current file is white and there are two neighboring black tiles, add
 
-		for x, y, z in targets:
-			black_neighbors = 0
-			for xo, yo, zo in offsets.values():
-				black_neighbors += tiles[(x + xo, y + yo, z + zo)]
-			if tiles[(x, y, z)]:
-				if black_neighbors == 0 or black_neighbors > 2:
-					new_tiles[(x, y, z)] = False
-			else:
-				if black_neighbors == 2:
-					new_tiles[(x, y, z)] = True
-
-		tiles = new_tiles
-
-	return sum(black for black in tiles.values())
+	return len(black_tiles)
 
 def test_two():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
