@@ -2,10 +2,13 @@ import os
 import functools
 
 
+
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
+
 
 LEFT = ('F', 'L')
 RIGHT = ('B', 'R')
+
 
 def calc_pos(chars: str, min: int, max: int) -> int:
 	for char in chars:

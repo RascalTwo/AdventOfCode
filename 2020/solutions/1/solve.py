@@ -1,7 +1,9 @@
 import os
 import itertools
 import math
+
 from typing import Optional
+
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))

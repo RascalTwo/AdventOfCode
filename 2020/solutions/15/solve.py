@@ -7,6 +7,7 @@ from typing import DefaultDict, List
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
+
 def solve(data: str, target: int) -> int:
 	def speak(value: int):
 		nonlocal last_spoken

@@ -49,6 +49,7 @@ def solve_two(data: str):
 		for line in data.split('\n')
 	)
 
+
 def test_two():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
 		data = input_file.read()
