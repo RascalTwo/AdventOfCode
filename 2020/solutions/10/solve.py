@@ -3,6 +3,7 @@ import math
 import collections
 
 
+
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -73,6 +74,7 @@ def solve_two(data: str):
 				cache[jolt] += cache[possible]
 
 	return cache[jolts[-1]]
+
 
 def test_two():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:

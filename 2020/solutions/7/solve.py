@@ -1,5 +1,7 @@
 import os
+
 from typing import Dict
+
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
@@ -48,10 +50,11 @@ vibrant plum bags contain 5 faded blue bags, 6 dotted black bags.
 faded blue bags contain no other bags.
 dotted black bags contain no other bags.''') == 4
 	print(solve_one(data))
-test_one()
+
 
 def get_bag_count(pile: PileOfBags, bag: str) -> int:
 	return sum(count * get_bag_count(pile, sub) for sub, count in pile.get(bag, {}).items()) + 1
+
 
 def solve_two(data: str):
 	return get_bag_count(parse_pile_of_bags(data), 'shiny gold') - 1

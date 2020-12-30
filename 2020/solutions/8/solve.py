@@ -1,10 +1,14 @@
 import os
+
 from typing import Dict, Tuple
+
+
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
 Instructions = Dict[int, Tuple[str, int]]
+
 
 def parse_instructions(data: str) -> Instructions:
 	return {

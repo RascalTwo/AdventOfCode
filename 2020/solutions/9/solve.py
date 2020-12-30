@@ -4,6 +4,7 @@ import itertools
 from typing import List
 
 
+
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -89,4 +90,3 @@ def test_two():
 309
 576''', 5) == 62
 	print(solve_two(data, 25))
-test_two()

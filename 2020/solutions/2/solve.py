@@ -1,5 +1,7 @@
 import os
+
 from typing import Callable, List
+
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))

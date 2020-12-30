@@ -81,6 +81,7 @@ def solve_two(data: str):
 		for _, ingredients in sorted(allergic_ingredient_lists.items(), key=lambda pair: pair[0])
 	)
 
+
 def test_two():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
 		data = input_file.read()

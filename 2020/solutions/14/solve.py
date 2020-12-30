@@ -7,6 +7,7 @@ from typing import Iterator, List, Tuple
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
+
 def parse_input(data: str) -> Iterator[Tuple[str, List[Tuple[int, int]]]]:
 	for mask, *assignments in (chunk.strip().split('\n') for chunk in data.split('mask = ')[1:]):
 		yield (

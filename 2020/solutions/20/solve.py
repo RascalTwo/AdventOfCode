@@ -2,9 +2,8 @@ import os
 import re
 import math
 import itertools
-import collections
 
-from typing import DefaultDict, Dict, Generic, List, MutableSequence, Optional, Set, Tuple, TypeVar, cast
+from typing import Dict, List, MutableSequence, Optional, Tuple, TypeVar
 
 
 
@@ -13,6 +12,7 @@ DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 T = TypeVar('T')
 Matrix = List[List[T]]
+
 
 def rotate_matrix_right(m: Matrix[T]) -> Matrix[T]:
 	"""
