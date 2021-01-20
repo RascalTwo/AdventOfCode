@@ -1,5 +1,6 @@
 import os
 
+
 from typing import Any, List
 
 
@@ -29,19 +30,20 @@ def play_game(values: List[int], steps: int):
 	current = cup_order[0]
 	for _ in range(steps):
 		picked = [current.next, current.next.next, current.next.next.next]
+		tail = picked[-1]
 
 		# C -> P... -> PN
-		current.next = picked[-1].next
+		current.next = tail.next
 		# C -> PN
 
 		dest_value = current.label - 1
-		while dest_value in picked or dest_value < least_value:
-			dest_value = dest_value - 1 if dest_value - 1 >= least_value else most_value
+		while dest_value < least_value or dest_value in picked:
+			dest_value = one_less if (one_less := dest_value - 1) >= least_value else most_value
 
 		dest_node = cups[dest_value]
 
 		# D -> DN
-		picked[-1].next = dest_node.next
+		tail.next = dest_node.next
 		dest_node.next = picked[0]
 		# D -> P... -> DN
 
