@@ -1,7 +1,8 @@
 import os
 import collections
 
-from typing import DefaultDict, List
+
+from typing import DefaultDict
 
 
 
@@ -9,31 +10,24 @@ DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
 def solve(data: str, target: int) -> int:
-	def speak(value: int):
-		nonlocal last_spoken
-		last_spoken = value
-		nums_to_turns[value].append(turn)
+	starting = [-1] + list(map(int, data.split(',')))
 
-	starting = list(map(int, data.split(',')))
+	nums_to_turns: DefaultDict[int, collections.deque[int]] = collections.defaultdict(lambda: collections.deque(maxlen=2), {
+		starting[turn]: collections.deque([turn], maxlen=2)
+		for turn in range(1, len(starting))
+	})
 
-	last_spoken = 0
-	nums_to_turns: DefaultDict[int, List[int]] = collections.defaultdict(list)
+	spoken: int = starting[-1]
+	for turn in range(len(starting), target + 1):
+		if len(nums_to_turns[spoken]) == 1:
+			spoken = 0
+		else:
+			deque = nums_to_turns[spoken]
+			spoken = deque[-1] - deque[0]
 
-	turn = 0
-	while turn != target:
-		turn += 1
-		if turn <= len(starting):
-			speak(starting[turn-1])
-			continue
+		nums_to_turns[spoken].append(turn)
 
-		if len(nums_to_turns[last_spoken]) == 1:
-			speak(0)
-			continue
-
-		latest, second_latest = nums_to_turns[last_spoken][-2:][::-1]
-		speak(latest - second_latest)
-
-	return last_spoken
+	return spoken
 
 
 def solve_one(data: str):
