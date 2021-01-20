@@ -7,27 +7,27 @@
 #include <numeric>
 #include <iterator>
 #include <tuple>
+#include <regex>
 
 
 using PasswordInfo = std::tuple<std::tuple<int, int>, char, std::string>;
 
 
 std::vector<PasswordInfo> parseInput(const std::string input){
-	std::stringstream is(input);
-
 	std::vector<PasswordInfo> results;
 
-	int first = 0;
-	while (is >> first){
-		int second = 0;
-		char character = ' ';
-		std::string password;
-		is.ignore(1, '-');
-		is >> second >> character;
-		is.ignore(1, ':');
-		is >> password;
-		results.push_back({{first, second}, character, password});
+	std::regex rgx("(\\d+)-(\\d+) ([a-z]): ([a-z]+)");
+	auto iter_begin = std::sregex_iterator(input.begin(), input.end(), rgx);
+
+	for (auto iter = iter_begin; iter != std::sregex_iterator(); ++iter){
+		std::smatch match = *iter;
+		results.push_back({
+			{stoi(match[1].str()), stoi(match[2].str())},
+			match[3].str()[0],
+			match[4].str()
+		});
 	}
+
 	return results;
 }
 
