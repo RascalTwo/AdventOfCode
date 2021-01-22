@@ -1,4 +1,4 @@
-# Devlog
+# [Day 16](https://adventofcode.com/2020/day/16)
 
 ## Initial
 
