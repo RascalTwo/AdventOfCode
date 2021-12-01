@@ -1,6 +1,10 @@
+import sys
+import os
 import inspect
 import urllib.request
 import http.client
+
+import dotenv
 
 
 USER_AGENT = "Rascal_Two's Script"
@@ -41,12 +45,16 @@ def get_input(session: str, year: int, day: int) -> bytes:
 
 
 if __name__ == '__main__':
-	import sys
+	dotenv.load_dotenv()
 	args = sys.argv[1:]
-	if len(args) != 3 or any('help' in arg for arg in args):
-		print('fetch_input.py [DAY] [YEAR] [AOC_SESSION]')
+	if len(args) < 2 or any('help' in arg for arg in args):
+		print('fetch_input.py <DAY> <YEAR> [AOC_SESSION]')
 		sys.exit(1)
 
-	day, year, session = args
+	day, year, *rest = args
+	session = rest[0] if rest else os.getenv('AOC_SESSION_TOKEN', None)
+	if session is None:
+		print('AOC Session Token is required, either add it as the "AOC_SESSION_TOKEN" environment variable or provide it to this command.')
+		sys.exit(1)
 
 	print(get_input(session, int(year), int(day)).decode())
