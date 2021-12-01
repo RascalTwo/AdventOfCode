@@ -7,11 +7,7 @@ DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 def solve_one(data: str):
 	measurements = list(map(int, data.strip().split('\n')))
-	inc = 0
-	for i, v in enumerate(measurements[1:], 1):
-		if v > measurements[i-1]:
-			inc+=1
-	return inc
+	return sum(current > measurements[i - 1] for i, current in enumerate(measurements[1:], 1))
 
 
 def test_one():
@@ -29,24 +25,11 @@ def test_one():
 263''') == 7
 	print(solve_one(data))
 
+
 def solve_two(data: str):
 	measurements = list(map(int, data.strip().split('\n')))
-	inc = 0
-	sums = []
-	for i, v in enumerate(measurements):
-		next3 = measurements[i:i+3]
-		print(next3)
-		if len(next3) != 3:
-			continue
-		one, two, three = next3
-		sums.append(sum(next3))
-		#if one < two and two < three:
-			#inc += 1
-	inc = 0
-	for i, v in enumerate(sums[1:], 1):
-		if v > sums[i-1]:
-			inc+=1
-	return inc
+	sums = [sum(measurements[i:i + 3]) for i in range(len(measurements) - 2)]
+	return sum(current > sums[i - 1] for i, current in enumerate(sums[1:], 1))
 
 
 def test_two():
@@ -63,5 +46,3 @@ def test_two():
 260
 263''') == 5
 	print(solve_two(data))
-
-test_two()
