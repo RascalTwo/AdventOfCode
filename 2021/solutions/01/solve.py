@@ -28,8 +28,16 @@ def test_one():
 
 def solve_two(data: str):
 	measurements = list(map(int, data.strip().split('\n')))
-	sums = [sum(measurements[i:i + 3]) for i in range(len(measurements) - 2)]
-	return sum(current > sums[i - 1] for i, current in enumerate(sums[1:], 1))
+
+	count = 0
+	current = sum(measurements[0:3])
+	for i in range(2, len(measurements) - 1):
+		last = current
+		current = current - measurements[i - 2] + measurements[i + 1]
+		if current > last:
+			count += 1
+
+	return count
 
 
 def test_two():
