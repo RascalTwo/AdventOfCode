@@ -20,17 +20,17 @@ if __name__ == '__main__':
 		for year in os.listdir(DIRPATH) if year.isdigit()
 	}.items()))
 	for year, days in years.items():
-		year_start = time.time()
+		year_start = time.perf_counter()
 		print(f'\t\t{year}')
 		for day, tests in days.items():
-			day_start = time.time()
+			day_start = time.perf_counter()
 			print(f'\t{day}')
 			for i, test in enumerate(tests):
-				start = time.time()
+				start = time.perf_counter()
 				test()
-				print(f'Part {i + 1} took {time.time() - start} ms')
-			print(f'Day {day} took {time.time() - day_start} ms')
-		print(f'Year {year} took {time.time() - year_start} ms')
+				print(f'Part {i + 1} took {time.perf_counter() - start} ms')
+			print(f'Day {day} took {time.perf_counter() - day_start} ms')
+		print(f'Year {year} took {time.perf_counter() - year_start} ms')
 
 # TODO - use pytest instead of native calls
 # TODO - capture stdout/stderr or have all methods return their final result and print it
