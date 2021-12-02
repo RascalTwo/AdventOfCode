@@ -4,19 +4,21 @@ import os
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
+
 def solve_one(data: str):
-	hor = 0
+	horizontal = 0
 	depth = 0
+
 	for line in data.strip().split('\n'):
-		cmd, arg = line.split(' ')
-		arg = int(arg)
-		if cmd == 'forward':
-			hor += arg
-		elif cmd == 'down':
-			depth += arg
-		elif cmd == 'up':
-			depth -= arg
-	return hor * depth
+		command, units = line.split(' ')
+		units = int(units)
+
+		if command == 'forward':
+			horizontal += units
+		else:
+			depth += units if command == 'down' else -units
+
+	return horizontal * depth
 
 
 def test_one():
@@ -32,21 +34,21 @@ forward 2''') == 150
 
 
 def solve_two(data: str):
-	hor = 0
+	horizontal = 0
 	depth = 0
 	aim = 0
-	for line in data.strip().split('\n'):
-		cmd, arg = line.split(' ')
-		arg = int(arg)
-		if cmd == 'forward':
-			hor += arg
-			depth += aim * arg
-		elif cmd == 'down':
-			aim += arg
-		elif cmd == 'up':
-			aim -= arg
-	return hor * depth
 
+	for line in data.strip().split('\n'):
+		command, units = line.split(' ')
+		units = int(units)
+
+		if command == 'forward':
+			horizontal += units
+			depth += aim * units
+		else:
+			aim += units if command == 'down' else -units
+
+	return horizontal * depth
 
 
 def test_two():
