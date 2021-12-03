@@ -1,10 +1,6 @@
 import os
-import re
 import math
-import itertools
-import collections
-
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 
 
@@ -12,30 +8,23 @@ DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
 def solve_one(data: str):
-	nums = list(map(str, data.strip().split('\n')))
-	length = len(str(nums[0]))
-	gamma = []
-	epsilon = []
-	for i in range(length):
-		zeros = 0
-		ones = 0
-		for num in nums:
-			num = str(num)
-			if num[i] == '1':
-				ones += 1
-			else:
-				zeros += 1
-		if zeros > ones:
-			gamma.append(0)
-			epsilon.append(1)
+	numbers = data.strip().split('\n')
+
+	gamma = ''
+	epsilon = ''
+	for i in range(len(numbers[0])):
+		counts = {'0': 0, '1': 0}
+		for number in numbers:
+			counts[number[i]] += 1
+
+		if counts['0'] > counts['1']:
+			gamma += '0'
+			epsilon += '1'
 		else:
-			gamma.append(1)
-			epsilon.append(0)
+			gamma += '1'
+			epsilon += '0'
 
-	gamma_num = int(''.join(map(str, gamma)), 2)
-	epsilon_num = int(''.join(map(str, epsilon)), 2)
-	return gamma_num * epsilon_num
-
+	return int(''.join(gamma), 2) * int(''.join(epsilon), 2)
 
 
 def test_one():
@@ -57,66 +46,24 @@ def test_one():
 
 
 def solve_two(data: str):
-	nums = list(map(str, data.strip().split('\n')))
-	length = len(str(nums[0]))
-	gamma = []
-	epsilon = []
-	oxygen = None
-	numbers = nums
-	for i in range(length):
-		if len(numbers) == 1:
-			break
-		zeros = 0
-		ones = 0
-		for num in numbers:
-			num = str(num)
-			if num[i] == '1':
-				ones += 1
-			else:
-				zeros += 1
+	numbers = data.strip().split('\n')
 
-		keeping = []
-		if ones >= zeros:
-			for num in numbers:
-				if num[i] == '1':
-					keeping.append(num)
-		else:
-			for num in numbers:
-				if num[i] == '0':
-					keeping.append(num)
-	
-		numbers = keeping
-	oxygen = numbers[0]
-	co2 = None
-	numbers = nums
-	for i in range(length):
-		if len(numbers) == 1:
-			break
-		zeros = 0
-		ones = 0
-		for num in numbers:
-			num = str(num)
-			if num[i] == '1':
-				ones += 1
-			else:
-				zeros += 1
+	results: List[str] = []
+	for lowest in range(2):
+		remaining = numbers
+		for i in range(len(numbers[0])):
+			counts: Dict[str, List[str]] = {'0': [], '1': []}
+			for number in remaining:
+				counts[number[i]].append(number)
 
-		keeping = []
-		if zeros > ones:
-			for num in numbers:
-				if num[i] == '1':
-					keeping.append(num)
-		else:
-			for num in numbers:
-				if num[i] == '0':
-					keeping.append(num)
-	
-		numbers = keeping
-	co2 = numbers[0]
+			remaining = counts['1' if lowest else '0'] if len(counts['1']) >= len(counts['0']) else counts['0' if lowest else '1']
+			if len(remaining) == 1:
+				break
 
-	oxygen = int(''.join(map(str, oxygen)), 2)
-	co2 = int(''.join(map(str, co2)), 2)
-	return oxygen * co2
+		results.append(remaining[0])
+
+	return math.prod(int(''.join(result), 2) for result in results)
+
 
 def test_two():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
