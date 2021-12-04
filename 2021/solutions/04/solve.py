@@ -1,60 +1,60 @@
 import os
-import re
-import math
-import itertools
-import collections
 
-from typing import Dict, List, Tuple
+from typing import Optional
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
-def mark_number(board: List[List[Tuple[int, bool]]], number: int):
-	for row in board:
-		for i, pair in enumerate(row):
-			if pair[0] == number:
-				row[i] = (pair[0], True)
 
-def is_won(board: List[List[Tuple[int, bool]]]) -> bool:
-	for row in board:
-		if all(pair[1] for pair in row):
-			return True
+class Board:
+	def __init__(self, raw: str):
+		self.rows = [[int(number) + 0j for number in row.split()] for row in raw.split('\n')]
 
-	for c in range(len(board[0])):
-		allgood = True
-		for r in range(len(board)):
-			if not board[r][c][1]:
-				allgood = False
-		if allgood:
-			return True
 
-	return False
+	def mark(self, marking: int):
+		for row in self.rows:
+			for i, cell in enumerate(row):
+				if cell.real == marking:
+					row[i] += 1j
 
-def parse_board(raw: str) -> List[List[Tuple[int, bool]]]:
-	board = []
-	for row in raw.split('\n'):
-		board.append(list(map(lambda str: [int(str), False], row.split())))
-	return board
+		return self.won
 
-def solve_one(data: str):
-	numbers = list(map(int, data.strip().split('\n')[0].split(',')))
 
-	boards = list(map(parse_board, data.strip().split('\n\n')[1:]))
-	for number in numbers:
-		for board in boards:
-			mark_number(board, number)
-			if is_won(board):
-				score = 0
-				for row in board:
-					for pair in row:
-						if pair[1]:
-							continue
-						score += pair[0]
+	@property
+	def won(self) -> bool:
+		return (
+			any(
+				all(cell.imag for cell in row)
+				for row in self.rows
+			) or
+			any(
+				all(
+					self.rows[r][c].imag
+					for r in range(len(self.rows))
+				)
+				for c in range(len(self.rows[0]))
+			)
+		)
 
-				return score * number
-	return None
+	@property
+	def score(self) -> int:
+		return int(sum(
+			cell.real
+			for row in self.rows for cell in row
+			if not cell.imag
+		))
+
+
+def solve_one(data: str) -> Optional[int]:
+	boards = list(map(Board, data.strip().split('\n\n')[1:]))
+	return next((
+		board.score * number
+		for number in list(map(int, data.strip().split('\n')[0].split(',')))
+		for board in boards
+		if board.mark(number)
+	), None)
 
 
 def test_one():
@@ -81,27 +81,18 @@ def test_one():
  2  0 12  3  7''') == 4512
 	print(solve_one(data))
 
+
 def solve_two(data: str):
-	numbers = list(map(int, data.strip().split('\n')[0].split(',')))
-
-	boards = list(map(parse_board, data.strip().split('\n\n')[1:]))
-	won = {}
-	for number in numbers:
-		for b, board in enumerate(boards):
-			if b in won:
+	boards = list(map(Board, data.strip().split('\n\n')[1:]))
+	for number in list(map(int, data.strip().split('\n')[0].split(','))):
+		for board in boards[:]:
+			if not board.mark(number):
 				continue
-			mark_number(board, number)
-			if is_won(board):
-				won[b] = True
-				if len(won.keys()) == len(boards):
-					score = 0
-					for row in board:
-						for pair in row:
-							if pair[1]:
-								continue
-							score += pair[0]
 
-					return score * number
+			boards.remove(board)
+			if not boards:
+				return board.score * number
+
 	return None
 
 
