@@ -1,5 +1,10 @@
 __pycache__
 .pytest_cache
+
+*.jar
+bin
+
 solve
+
 meta
 *visualize*
