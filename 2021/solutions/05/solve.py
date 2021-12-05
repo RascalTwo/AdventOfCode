@@ -1,27 +1,24 @@
 import os
+import math
+import collections
 
+from typing import Counter, Tuple
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
 def solve_one(data: str):
-	crossed = {}
-	for line in data.strip().split('\n'):
-		start, end = [list(map(int, side.split(','))) for side in line.split(' -> ')]
-		if start[0] == end[0] or start[1] == end[1]:
-			lx = min(start[0], end[0])
-			hx = max(start[0], end[0])
-			ly = min(start[1], end[1])
-			hy = max(start[1], end[1])
-			for x in range(lx, hx + 1):
-				for y in range(ly, hy + 1):
-					xy = (x, y)
-					if xy not in crossed:
-						crossed[xy] = 0
-					crossed[xy] += 1
+	world: Counter[Tuple[int, int]] = collections.Counter()
 
-	return sum(1 for item in crossed.items() if item[1] >= 2)
+	for line in data.strip().split('\n'):
+		start, end = [tuple(map(int, side.split(','))) for side in line.split(' -> ')]
+		if start[0] == end[0] or start[1] == end[1]:
+			for x in range(*((start[0], end[0] + 1) if start[0] < end[0] else (end[0], start[0] + 1))):
+				for y in range(*((start[1], end[1] + 1) if start[1] < end[1] else (end[1], start[1] + 1))):
+					world[x, y] += 1
+
+	return sum(1 for value in world.values() if value > 1)
 
 
 def test_one():
@@ -41,38 +38,23 @@ def test_one():
 
 
 def solve_two(data: str):
-	crossed = {}
-	for line in data.strip().split('\n'):
-		start, end = [list(map(int, side.split(','))) for side in line.split(' -> ')]
-		lx = min(start[0], end[0])
-		hx = max(start[0], end[0])
-		ly = min(start[1], end[1])
-		hy = max(start[1], end[1])
-		if start[0] == end[0] or start[1] == end[1]:
-			for x in range(lx, hx + 1):
-				for y in range(ly, hy + 1):
-					xy = (x, y)
-					if xy not in crossed:
-						crossed[xy] = 0
-					crossed[xy] += 1
-			continue
-		dx = 1 if end[0] > start[0] else -1
-		dy = 1 if end[1] > start[1] else -1
-		x = start[0]
-		y = start[1]
-		while x != end[0] and y != end[1]:
-			xy = (x, y)
-			if xy not in crossed:
-				crossed[xy] = 0
-			crossed[xy] += 1
-			x += dx
-			y += dy
-		xy = (x, y)
-		if xy not in crossed:
-			crossed[xy] = 0
-		crossed[xy] += 1
+	world: Counter[complex] = collections.Counter()
 
-	return sum(1 for item in crossed.items() if item[1] >= 2)
+	for line in data.strip().split('\n'):
+		start, end = [complex(*map(int, side.split(','))) for side in line.split(' -> ')]
+		delta = complex(*(
+			math.copysign(
+				int(getattr(start, attrib) != getattr(end, attrib)),
+				getattr(end, attrib) - getattr(start, attrib)
+			)
+			for attrib in ('real', 'imag')
+		))
+		current = start
+		while current != end + delta:
+			world[current] += 1
+			current += delta
+
+	return sum(1 for count in world.values() if count > 1)
 
 
 def test_two():
