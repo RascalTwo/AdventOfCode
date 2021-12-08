@@ -1,20 +1,20 @@
 import os
+from typing import Dict, Set
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
 def solve_one(data: str):
-	lines = [line.replace(' | ', ' ').split(' ') for line in data.strip().split('\n')]
-	count = 0
-	output = [line[-4:] for line in lines]
-	for line in output:
-		for pattern in line:
-			if len(pattern) in [2, 4, 3, 7]:
-				count += 1
-	return count
-
-
+	known = set((2, 4, 3, 7))
+	return sum(
+		len(pattern) in known
+		for line in (
+			line.replace(' | ', ' ').split()
+			for line in data.strip().split('\n')
+		)
+		for pattern in line[-4:]
+	)
 
 
 def test_one():
@@ -34,71 +34,61 @@ gcafb gcf dcaebfg ecagb gf abcdeg gaef cafbge fdbac fegbdc | fgae cfgab fg bagce
 
 
 def solve_two(data: str):
-	lines = [line.replace(' | ', ' ').split(' ') for line in data.strip().split('\n')]
-	count = 0
 	result = 0
-	for line in lines:
-		one = None
-		four = None
-		seven = None
-		eight = None
-		identified = {}
-		for pattern in line[:-4]:
-			if len(pattern) in [2, 4, 3, 7]:
-				if len(pattern) == 2:
-					one = pattern
-					identified[1] = pattern
-				if len(pattern) == 7:
-					eight = pattern
-					identified[8] = pattern
-				if len(pattern) == 3:
-					identified[7] = pattern
-					seven = pattern
-				if len(pattern) == 4:
-					four = pattern
-					identified[4] = pattern
-				count += 1
-		top = set(seven) - set(four)
-		rights = set(four) & set(one)
-		three = None
-		for pattern in line[:-4]:
+	for line in (line.replace(' | ', ' ').split() for line in data.strip().split('\n')):
+		inputs = line[:-4]
+		outputs = line[-4:]
+
+		found: Dict[int, Set[str]] = {}
+		for pattern in inputs:
+			if len(pattern) == 2:
+				found[1] = set(pattern)
+			elif len(pattern) == 3:
+				found[7] = set(pattern)
+			elif len(pattern) == 4:
+				found[4] = set(pattern)
+			elif len(pattern) == 7:
+				found[8] = set(pattern)
+
+		segments: Dict[str, Set[str]] = {
+			'top': found[7] - found[4]
+		}
+		rights = found[4] & found[1]
+		for pattern in inputs:
 			if len(pattern) == 5 and all(right in pattern for right in rights):
-				three = pattern
-		identified[3] = three
-		topleft = set(four) - set(three)
-		middle = set(four) - rights & set(three)
-		bottom = set(three) - rights - middle - topleft- top
-		zero = None
-		for pattern in line[:-4]:
-			if len(pattern) == 6 and list(middle)[0] not in pattern:
-				zero = pattern
-		identified[0] = zero
-		bottomleft = set(zero) - top - bottom - rights - topleft
-		five = None
-		for pattern in line[:-4]:
-			if len(pattern) == 5 and list(top)[0] in pattern and list(topleft)[0] in pattern and list(middle)[0] in pattern and list(bottom)[0] in pattern:
-				five = pattern
-		identified[5] = five
-		print(five)
-		two = None
-		for pattern in line[:-4]:
-			if len(pattern) == 5 and pattern != three and pattern != five:
-				two = pattern
-		identified[2] = two
-		topright = set(eight) - top - topleft - middle - bottomleft - bottom
-		topright = set(two) - top - middle - bottomleft - bottom
-		bottomright = rights - topright
-		topright = topright - bottomright
-		identified[9] = ''.join(set(eight) - bottomleft)
-		identified[6] = ''.join(set(eight) - topright)
-		output_patterns = line[-4:]
-		digits = []
-		for pattern in output_patterns:
-			for key, value in identified.items():
-				if set(value) == set(pattern):
-					digits.append(int(key))
-					break
-		result += int(''.join(map(str, digits)))
+				found[3] = set(pattern)
+				break
+
+		segments['top_left'] = found[4] - found[3]
+		segments['middle'] = found[4] - rights & found[3]
+		segments['bottom'] = found[3] - rights - segments['middle'] - segments['top_left'] - segments['top']
+		found[0] = found[8] - segments['middle']
+
+		segments['bottom_left'] = found[0] - segments['top'] - segments['bottom'] - rights - segments['top_left']
+		for pattern in inputs:
+			if len(pattern) == 5 and all(list(segments[key])[0] in pattern for key in ('top', 'top_left', 'middle', 'bottom')):
+				found[5] = set(pattern)
+				break
+
+		for pattern in inputs:
+			if len(pattern) == 5 and all(found[key] != set(pattern) for key in (3, 5)):
+				found[2] = set(pattern)
+				break
+
+		segments['top_right'] = found[2] - segments['top'] - segments['middle'] - segments['bottom_left'] - segments['bottom']
+		segments['bottom_right'] = rights - segments['top_right']
+		found[6] = found[8] - segments['top_right']
+		found[9] = found[8] - segments['bottom_left']
+
+		result += int(''.join(map(str, [
+			next(
+				int(key)
+				for key, value in found.items()
+				if value == set(pattern)
+			)
+			for pattern in outputs
+		])))
+
 	return result
 
 
