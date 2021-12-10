@@ -1,23 +1,43 @@
 import os
-import re
-import math
-import itertools
 import collections
 
-from typing import Dict, List, Tuple
+from typing import DefaultDict, Dict, List, Tuple
+
+Invalid = Tuple[str, int]
+Incomplete = List[str]
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
+def parse_chunks(data: str, get_invalid: bool = False, get_incomplete: bool = False, pairs: Dict[str, str] = {'(': ')', '[': ']', '{': '}', '<': '>'}) -> Tuple[List[Invalid], List[Incomplete]]:
+	invalid: List[Invalid] = []
+	incomplete: List[Incomplete] = []
+
+	if not get_invalid and not get_incomplete:
+		return invalid, incomplete
+
+
+	for line in data.strip().split('\n'):
+		opens: List[str] = []
+		for i, chunk in enumerate(line):
+			if chunk in pairs:
+				opens.append(chunk)
+			elif chunk in pairs.values():
+				if pairs[opens.pop()] == chunk:
+					continue
+				if get_invalid:
+					invalid.append((line, i))
+				break
+		else:
+			if opens and get_incomplete:
+				incomplete.append([pairs[chunk] for chunk in opens[::-1]])
+
+	return invalid, incomplete
+
+
 def solve_one(data: str):
-	matches = {
-		'(': ')',
-		'[': ']',
-		'{': '}',
-		'<': '>'
-	}
 	points = {
 		')': 3,
 		']': 57,
@@ -25,22 +45,11 @@ def solve_one(data: str):
 		'>': 25137
 	}
 
-	invalids = collections.defaultdict(int)
+	invalid_chars: DefaultDict[str, int] = collections.defaultdict(int)
+	for line, i in parse_chunks(data, get_invalid=True)[0]:
+		invalid_chars[line[i]] += 1
 
-	for line in data.strip().split('\n'):
-		stack = []
-		for char in line:
-			if char in matches:
-				stack.append(char)
-			elif char in matches.values():
-				key = stack.pop()
-				if matches[key] != char:
-					invalids[char] += 1
-	result = 0
-	for char, count in invalids.items():
-		result += count * points[char]
-
-	return result
+	return sum(count * points[char] for char, count in invalid_chars.items())
 
 
 def test_one():
@@ -60,41 +69,19 @@ def test_one():
 
 
 def solve_two(data: str):
-	matches = {
-		'(': ')',
-		'[': ']',
-		'{': '}',
-		'<': '>'
-	}
 	points = {
-		'(': 1,
-		'[': 2,
-		'{': 3,
-		'<': 4
+		')': 1,
+		']': 2,
+		'}': 3,
+		'>': 4
 	}
 
-	invalids = collections.defaultdict(int)
-
-	incomplete = []
-	for line in data.strip().split('\n'):
-		stack = []
-		for char in line:
-			if char in matches:
-				stack.append(char)
-			elif char in matches.values():
-				key = stack.pop()
-				if matches[key] != char:
-					break
-		else:
-			if stack:
-				incomplete.append(stack)
-	
-	results = []
-	for stack in incomplete:
+	results: List[int] = []
+	for missing in parse_chunks(data, get_incomplete=True)[1]:
 		result = 0
-		for char in stack[::-1]:
+		for chunk in missing:
 			result *= 5
-			result += points[char]
+			result += points[chunk]
 		results.append(result)
 
 
