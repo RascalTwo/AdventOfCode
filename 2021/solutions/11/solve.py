@@ -1,58 +1,62 @@
 import os
-import re
-import math
-import itertools
-import collections
+import sys
 
-from typing import Dict, List, Tuple
+from typing import Dict, Literal, Set, Union
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
-def solve_one(data: str):
-	matrix = []
-	for row in data.strip().split('\n'):
-		matrix.append(list(map(int, list(row))))
-	
-	count = 0
-	def flash(r: int, c: int):
-		matrix[r][c] = -1
-		flashed[r, c] += 1
-		#if flashed[r, c] > 1:
-			#return
-		for ro in [-1, 0, 1]:
-			for co in [-1, 0, 1]:
-				if not ro and not co:
-					continue
-				nr, nc = r + ro, c + co
-				if nr < 0 or nc < 0 or nr >= len(matrix) or nc >= len(matrix[nr]):
-					continue
-				matrix[nr][nc] += 1
-				if matrix[nr][nc] >= 10:
-					flashed[nr, nc] = 10
-					flash(nr, nc)
+def flash(matrix: Dict[complex, int], flashed: Set[complex], loc: complex):
+	flashed.add(loc)
+
+	matrix[loc] = -1
+	for ro in [-1, 0, 1]:
+		for co in [-1, 0, 1]:
+			if not ro and not co:
+				continue
+
+			new_loc = loc + complex(ro, co)
+			if new_loc not in matrix:
+				continue
+
+			matrix[new_loc] += 1
+			if matrix[new_loc] > 9:
+				flash(matrix, flashed, new_loc)
+
+def solve(data: str, mode: Union[Literal[1], Literal[2]]) -> int:
+	matrix = {
+		complex(r, c): int(col)
+		for r, row in enumerate(data.strip().split('\n'))
+		for c, col in enumerate(row)
+	}
 
 	flash_total = 0
-	for _ in range(100):
-		flashed = collections.defaultdict(int)
-		for r, row in enumerate(matrix):
-			for c, col in enumerate(row):
-				row[c] += 1
-		for r, row in enumerate(matrix):
-			for c, col in enumerate(row):
-				if col >= 10:
-					flashed[r, c] = 10
-					flash(r, c)
-		for (r, c), count in flashed.items():
-			if count > 10:
-				matrix[r][c] = 0
-			else:
-				matrix[r][c] += count
-		flash_total += len(flashed)
+	for step in range(1, 101 if mode == 1 else sys.maxsize):
+		for loc, col in matrix.items():
+			matrix[loc] += 1
+
+
+		flashed: Set[complex] = set()
+		for loc, col in matrix.items():
+			if col > 9:
+				flash(matrix, flashed, loc)
+
+		for loc in flashed:
+			matrix[loc] = 0
+
+
+		if mode == 1:
+			flash_total += len(flashed)
+		elif len(flashed) == len(matrix):
+			return step
+
 	return flash_total
 
+
+def solve_one(data: str):
+	return solve(data, 1)
 
 
 def test_one():
@@ -72,47 +76,7 @@ def test_one():
 
 
 def solve_two(data: str):
-	matrix = []
-	for row in data.strip().split('\n'):
-		matrix.append(list(map(int, list(row))))
-	
-	count = 0
-	def flash(r: int, c: int):
-		matrix[r][c] = -1
-		flashed[r, c] += 1
-		#if flashed[r, c] > 1:
-			#return
-		for ro in [-1, 0, 1]:
-			for co in [-1, 0, 1]:
-				if not ro and not co:
-					continue
-				nr, nc = r + ro, c + co
-				if nr < 0 or nc < 0 or nr >= len(matrix) or nc >= len(matrix[nr]):
-					continue
-				matrix[nr][nc] += 1
-				if matrix[nr][nc] >= 10:
-					flashed[nr, nc] = 10
-					flash(nr, nc)
-
-	flash_total = 0
-	for _ in range(1000):
-		flashed = collections.defaultdict(int)
-		for r, row in enumerate(matrix):
-			for c, col in enumerate(row):
-				row[c] += 1
-		for r, row in enumerate(matrix):
-			for c, col in enumerate(row):
-				if col >= 10:
-					flashed[r, c] = 10
-					flash(r, c)
-		for (r, c), count in flashed.items():
-			if count > 10:
-				matrix[r][c] = 0
-			else:
-				matrix[r][c] += count
-		flash_total += len(flashed)
-		if sum(count > 10 for count in flashed.values()) == len(matrix) * len(matrix[0]):
-			return _ + 1
+	return solve(data, 2)
 
 
 def test_two():
