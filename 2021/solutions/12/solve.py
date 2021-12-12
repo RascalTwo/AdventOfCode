@@ -1,42 +1,44 @@
 import os
 import collections
 
-from typing import DefaultDict, Set
+from typing import DefaultDict, List, Set, Tuple
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
-
 def solve(data: str, small_revisits: int):
+	small_caves: Set[str] = set()
+
 	edges: DefaultDict[str, Set[str]] = collections.defaultdict(set)
 	for origin, dest in (edge.split('-') for edge in data.strip().split('\n')):
 		edges[origin].add(dest)
 		edges[dest].add(origin)
 
+		for cave in (origin, dest):
+			if cave not in ('start', 'end') and cave.islower():
+				small_caves.add(cave)
+
 	paths = 0
 
-	processing = [['start']]
-	while processing:
-		path = processing.pop()
-		current = path[-1]
-		if current == 'end':
-			continue
+	stack: List[Tuple[Set[str], str, DefaultDict[str, int], Set[str]]] = [(set(), 'start', collections.defaultdict(int), set())]
+	while stack:
+		path, current, smalls, can_revisit = stack.pop()
 
-		can_revisit_small = False
-		smalls: DefaultDict[str, int] = collections.defaultdict(int)
-		for cave in path[1:]:
-			if cave.islower():
-				smalls[cave] += 1
-		can_revisit_small = sum(count == 2 for count in smalls.values()) < small_revisits
-		can_revisit: Set[str] = set((small for small, count in smalls.items() if count == 1) if can_revisit_small else ())
+		if current in small_caves:
+			smalls[current] += 1
+			getattr(can_revisit, 'add' if smalls[current] == 1 else 'remove')(current)
+			if len(smalls) - len(can_revisit) >= small_revisits:
+				can_revisit.clear()
 
 		for dest in edges[current]:
-			if dest == 'start' or (dest in path and dest.islower() and dest not in can_revisit):
+			# If is small cave that has been visited, but cannot revisit
+			if dest == 'start' or (dest not in can_revisit and dest in small_caves and dest in path):
 				continue
 			if dest == 'end':
 				paths += 1
 			else:
-				processing.append([*path, dest])
+				stack.append((path | {current}, dest, smalls.copy(), can_revisit.copy()))
+
 	return paths
 
 
