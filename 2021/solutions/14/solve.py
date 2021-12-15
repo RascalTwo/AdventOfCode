@@ -1,40 +1,39 @@
 import os
-import re
-import math
-import itertools
 import collections
 
-from typing import Dict, List, Tuple
+from typing import Counter
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
-def solve_one(data: str):
-	start = data.strip().split('\n')[0]
-	rules = [rule.split(' -> ') for rule in data.strip().split('\n\n')[1].split('\n')]
-	#for adj, ins in rules[:]:
-		#rules.append([''.join(reversed(list(adj))), ins])
+def solve(data: str, steps: int):
+	template = data.strip().split('\n')[0]
+	rules = {pair: inserting for pair, inserting in [rule.split(' -> ') for rule in data.strip().split('\n\n')[1].split('\n')]}
 
-	for step in range(10):
-		template = start
-		found_pairs = []
-		#for i in range(len(start) - 1):
-#			pair = template[i:i + 2]
-		for i in range(len(start) - 2, -1, -1):
-			pair = template[i:i+2]
-			for adj, ins in rules:
-				if adj == pair:
-					idx = template.index(adj, i) + 1
-					template = list(template)
-					template.insert(idx, ins)
-					template = ''.join(template)
-		#print(template)
-		start = template
-	counts = collections.Counter(start)
+	pairs: Counter[str] = collections.Counter()
+	for i in range(len(template) - 1):
+		pairs[template[i:i + 2]] += 1
+
+	for _ in range(steps):
+		new_pairs: Counter[str] = collections.Counter()
+		for pair, count in pairs.items():
+			inserting = rules[pair]
+			new_pairs[pair[0] + inserting] += count
+			new_pairs[inserting + pair[1]] += count
+		pairs = new_pairs
+
+	counts: Counter[str] = collections.Counter()
+	for (_, right), count in pairs.items():
+		counts[right] += count
+	counts[template[0]] += 1
+
 	return max(counts.values()) - min(counts.values())
 
+
+def solve_one(data: str):
+	return solve(data, 10)
 
 
 def test_one():
@@ -62,26 +61,7 @@ CN -> C''') == 1588
 
 
 def solve_two(data: str):
-	start = data.strip().split('\n')[0]
-	rules = [(adj, ins) for adj, ins in [rule.split(' -> ') for rule in data.strip().split('\n\n')[1].split('\n')]]
-	pairs = collections.Counter()
-	for i in range(len(start) - 1):
-		pairs[start[i:i+2]] += 1
-
-	for _ in range(40):
-		new_pairs = collections.Counter()
-		for pair, count in pairs.items():
-			left, right = list(pair)
-			for adj, ins in rules:
-				if adj == pair:
-					new_pairs[left+ins] += count
-					new_pairs[ins+right] += count
-		pairs = new_pairs
-	counts = collections.Counter()
-	for pair, count in pairs.items():
-		counts[pair[0]] += count
-	counts[start[-1]] += 1
-	return max(counts.values()) - min(counts.values())
+	return solve(data, 40)
 
 
 def test_two():
