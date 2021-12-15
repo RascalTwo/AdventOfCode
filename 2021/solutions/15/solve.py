@@ -1,10 +1,8 @@
 import os
-import re
-import math
-import itertools
-import collections
+import sys
+import heapq
 
-from typing import Dict, List, Set, SupportsRound, Tuple
+from typing import Dict, List, Set, Tuple
 
 
 
@@ -13,40 +11,38 @@ DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 def dijkstra(matrix: List[List[int]]) -> int:
 	edges: Dict[Tuple[int, int], Set[Tuple[int, int]]] = {}
-	risks = {}
+	risks: Dict[Tuple[int, int], int] = {}
 	for r, row in enumerate(matrix):
 		for c, weight in enumerate(row):
-			risks[(r, c)] = weight
-			if (r, c) not in edges:
-				edges[(r, c)] = set()
+			loc = r, c
+
+			risks[loc] = weight
+
+			if loc not in edges:
+				edges[loc] = set()
 			for ro, co in [[0, 1], [0, -1], [1, 0], [-1, 0]]:
 				nr, nc = r + ro, c + co
 				if nr < 0 or nc < 0 or nr >= len(matrix) or nc >= len(matrix[0]):
 					continue
-				edges[(r, c)].add((nr, nc))
-	import sys
-	import heapq
-	current = (0, 0)
+				edges[loc].add((nr, nc))
+
+	start = (0, 0)
 	distances = {node: sys.maxsize for node in edges}
-	distances[current] = 0
-	goal = (len(matrix) - 1, len(matrix[0]) - 1)
+	distances[start] = 0
 
-	pq = [(0, current)]
+	pq: List[Tuple[int, Tuple[int, int]]] = [(0, start)]
 	while pq:
-		dist, current = heapq.heappop(pq)
+		distance, current = heapq.heappop(pq)
 		for neighbor in edges[current]:
-			ndist = dist + risks[neighbor]
-			if ndist < distances[neighbor]:
-				distances[neighbor] = ndist
-				heapq.heappush(pq, (ndist, neighbor))
-		if distances[goal] != sys.maxsize:
-			return distances[goal]
+			if (new_dist := distance + risks[neighbor]) < distances[neighbor]:
+				distances[neighbor] = new_dist
+				heapq.heappush(pq, (new_dist, neighbor))
 
-	return distances[goal]
+	return distances[len(matrix) - 1, len(matrix[0]) - 1]
+
 
 def solve_one(data: str):
-	matrix = [list(map(int, row)) for row in data.strip().split('\n')]
-	return dijkstra(matrix)
+	return dijkstra([list(map(int, row)) for row in data.strip().split('\n')])
 
 
 def test_one():
@@ -65,34 +61,27 @@ def test_one():
 	print(solve_one(data))
 
 
-
 def solve_two(data: str):
 	matrix = [list(map(int, row)) for row in data.strip().split('\n')]
-	for row in matrix:
-		length = len(row)
-		for _ in range(4):
-			for col in row[length * _:]:
-				nv = (col + 1) % 10
-				if not nv:
-					nv = 1
-				row.append(nv)
 
-	length = len(matrix)
-	for _ in range(4):
-		for row in matrix[length * _:]:
-			new_row = []
-			for col in row:
-				nv = (col + 1) % 10
-				if not nv:
-					nv = 1
-				new_row.append(nv)
-			matrix.append(new_row)
+	height = len(matrix)
+	width = len(matrix[0])
+
+	for row in matrix:
+		for chunk in range(4):
+			row += [((col + 1) % 10) or 1 for col in row[width * chunk:]]
+
+	for chunk in range(4):
+		for row in matrix[height * chunk:]:
+			matrix.append([((col + 1) % 10) or 1 for col in row])
+
 	return dijkstra(matrix)
+
 
 def test_two():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
 		data = input_file.read()
-	"""assert solve_two('''1163751742
+	assert solve_two('''1163751742
 1381373672
 2136511328
 3694931569
@@ -101,5 +90,5 @@ def test_two():
 1359912421
 3125421639
 1293138521
-2311944581''') == 315"""
+2311944581''') == 315
 	print(solve_two(data))
