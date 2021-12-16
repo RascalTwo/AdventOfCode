@@ -1,125 +1,109 @@
 import os
-import re
+import sys
 import math
-import itertools
-import collections
 
-from typing import Dict, List, Optional, Tuple, TypedDict
+from typing import List, Optional, Tuple
 
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
-PPacket = TypedDict('PPacket', { 'version': int, 'type_id': int, 'literal': str, 'subpackets': List['PPacket'], 'remaining': str})
+class Packet:
+	def __init__(self, version: int, type: int, literal: str = '', subpackets: Optional[List['Packet']] = None):
+		self.version = version
+		self.type = type
+		self.literal = literal
+		self.subpackets = subpackets or []
 
-def eval_packet(ppacket: PPacket) -> int:
-	if ppacket['type_id'] == 0:
-		return sum(eval_packet(sub) for sub in ppacket['subpackets'])
-	elif ppacket['type_id'] == 1:
-		return math.prod(eval_packet(sub) for sub in ppacket['subpackets'])
-	elif ppacket['type_id'] == 2:
-		return min(eval_packet(sub) for sub in ppacket['subpackets'])
-	elif ppacket['type_id'] == 3:
-		return max(eval_packet(sub) for sub in ppacket['subpackets'])
-	elif ppacket['type_id'] == 4:
-		return int(ppacket['literal'], 2)
-	elif ppacket['type_id'] == 5:
-		return int(eval_packet(ppacket['subpackets'][0]) > eval_packet(ppacket['subpackets'][1]))
-	elif ppacket['type_id'] == 6:
-		return int(eval_packet(ppacket['subpackets'][0]) < eval_packet(ppacket['subpackets'][1]))
-	elif ppacket['type_id'] == 7:
-		return int(eval_packet(ppacket['subpackets'][0]) == eval_packet(ppacket['subpackets'][1]))
 
-def parse_packet(packet: str) -> PPacket:
-	version, packet = int(packet[:3], 2), packet[3:]
-	type_id, packet = int(packet[:3], 2), packet[3:]
-	if type_id == 4:
-		literal = ''
-		while packet[0] != '0':
-			literal += packet[1:5]
-			packet = packet[5:]
+	def eval(self) -> int:
+		if self.type == 0:
+			return sum(sub.eval() for sub in self.subpackets)
+		elif self.type == 1:
+			return math.prod(sub.eval() for sub in self.subpackets)
+		elif self.type == 2:
+			return min(sub.eval() for sub in self.subpackets)
+		elif self.type == 3:
+			return max(sub.eval() for sub in self.subpackets)
+		elif self.type == 4:
+			return int(self.literal, 2)
+		elif self.type == 5:
+			return int(self.subpackets[0].eval() > self.subpackets[1].eval())
+		elif self.type == 6:
+			return int(self.subpackets[0].eval() < self.subpackets[1].eval())
+		elif self.type == 7:
+			return int(self.subpackets[0].eval() == self.subpackets[1].eval())
+		return sys.maxsize
 
-		literal += packet[1:5]
-		packet = packet[5:]
 
-		return PPacket(version=version, type_id=type_id, literal=literal, subpackets=[], remaining=packet)
+	def sum_versions(self) -> int:
+		return sum([self.version, *(sub.sum_versions() for sub in self.subpackets)])
 
-	subpackets: List[PPacket] = []
 
-	length_type_id, packet = int(packet[0], 2), packet[1:]
-	if length_type_id == 0:
-		length, packet = int(packet[:15], 2), packet[15:]
+	@staticmethod
+	def parse(bits: str) -> Tuple['Packet', str]:
+		version, bits = int(bits[:3], 2), bits[3:]
+		type_id, bits = int(bits[:3], 2), bits[3:]
+		if type_id == 4:
 
-		orig_length = len(packet)
-		while (orig_length - len(packet)) < length:
-			subpacket = parse_packet(packet)
+			literal = ''
+			while bits[0] != '0':
+				literal, bits = literal + bits[1:5], bits[5:]
+			literal, bits = literal + bits[1:5], bits[5:]
+
+			return Packet(version, type_id, literal, subpackets=[]), bits
+
+		subpackets: List[Packet] = []
+		length_type_id, bits = bits[0], bits[1:]
+		if length_type_id == '0':
+			total_length, bits = int(bits[:15], 2), bits[15:]
+
+			orig_length = len(bits)
+			while (orig_length - len(bits)) < total_length:
+				subpacket, bits = Packet.parse(bits)
+				subpackets.append(subpacket)
+
+			return Packet(version, type_id, subpackets=subpackets), bits
+
+		count, bits = int(bits[:11], 2), bits[11:]
+		for _ in range(count):
+			subpacket, bits = Packet.parse(bits)
 			subpackets.append(subpacket)
-			packet = subpacket['remaining']
 
-		return PPacket(version=version, type_id=type_id, literal='', subpackets=subpackets, remaining=packet)
-
-	count, packet = int(packet[:11], 2), packet[11:]
-	for _ in range(count):
-		subpacket = parse_packet(packet)
-		subpackets.append(subpacket)
-		packet = subpacket['remaining']
-	return PPacket(version=version, type_id=type_id, literal='', subpackets=subpackets, remaining=packet)
+		return Packet(version, type_id, subpackets=subpackets), bits
 
 
-
-hextobin = {
-	'0': '0000',
-	'1': '0001',
-	'2': '0010',
-	'3': '0011',
-	'4': '0100',
-	'5': '0101',
-	'6': '0110',
-	'7': '0111',
-	'8': '1000',
-	'9': '1001',
-	'A': '1010',
-	'B': '1011',
-	'C': '1100',
-	'D': '1101',
-	'E': '1110',
-	'F': '1111',
-}
 def solve_one(data: str):
-	allbin = ''
-	for char in data.strip():
-		allbin += hextobin[char]
-	packet = parse_packet(allbin)
-	result = 0
-	pool: List[PPacket] = [packet]
-	while pool:
-		p = pool.pop()
-		result += p['version']
-		for sp in p['subpackets']:
-			pool.append(sp)
-	return result
+	return Packet.parse(''.join(bin(int(char, 16))[2:].zfill(4) for char in data.strip()))[0].sum_versions()
 
 
 def test_one():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
 		data = input_file.read()
-	assert solve_one('''D2FE28''') == 6
-	assert solve_one('''38006F45291200''') == 9
-	assert solve_one('''8A004A801A8002F478''') == 16
-	assert solve_one('''620080001611562C8802118E34''') == 12
-	assert solve_one('''C0015000016115A2E0802F182340''') == 23
-	assert solve_one('''A0016C880162017C3686B18A3D4780''') == 31
+	assert solve_one('D2FE28') == 6
+	assert solve_one('38006F45291200') == 9
+	assert solve_one('8A004A801A8002F478') == 16
+	assert solve_one('620080001611562C8802118E34') == 12
+	assert solve_one('C0015000016115A2E0802F182340') == 23
+	assert solve_one('A0016C880162017C3686B18A3D4780') == 31
 	print(solve_one(data))
 
 
 def solve_two(data: str):
-	allbin = ''
-	for char in data.strip():
-		allbin += hextobin[char]
-	return eval_packet(parse_packet(allbin))
+	return Packet.parse(''.join(bin(int(char, 16))[2:].zfill(4) for char in data.strip()))[0].eval()
+
 
 def test_two():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
 		data = input_file.read()
-	assert solve_two('''C200B40A82''') == 3
+	assert solve_two('C200B40A82') == 3
+	assert solve_two('C200B40A82') == 3
+	assert solve_two('04005AC33890') == 54
+	assert solve_two('880086C3E88112') == 7
+	assert solve_two('CE00C43D881120') == 9
+	assert solve_two('D8005AC2A8F0') == 1
+	assert solve_two('F600BC2D8F') == 0
+	assert solve_two('9C005AC2F8F0') == 0
+	assert solve_two('9C0141080250320F1802104A08') == 1
+
 	print(solve_two(data))
