@@ -1,38 +1,41 @@
 import os
 
+from typing import Tuple
+
 
 
 DIRPATH = os.path.dirname(os.path.abspath(__file__))
 
 
+def launch(xv: int, yv: int, lx: int, hx: int, ly: int, hy: int) -> Tuple[bool, int]:
+	max_y = 0
+	x = 0
+	y = 0
+	while True:
+		x += xv
+		y += yv
+		max_y = max(max_y, y)
+
+		if xv:
+			xv += -1 if xv > 0 else 1
+		yv -= 1
+
+		if lx <= x <= hx and ly <= y <= hy:
+			return True, max_y
+		if yv < 0 and y < ly:
+			return False, 0
+		if xv > 0 and x > hx:
+			return False, 0
+
+
 def solve_one(data: str):
 	[[lx, hx], [ly, hy]] = [list(map(int, side.split('=')[1].split('..'))) for side in data.strip().split(': ')[1].split(', ')]
 
-
 	best_y = 0
-	for ixv in range(hx):
-		for iyv in range(ly, 1000):
-			max_y = 0
-			x = 0
-			y = 0
-			xv = ixv
-			yv = iyv
-			while True:
-				x += xv
-				y += yv
-				max_y = max(max_y, y)
-
-				if xv:
-					xv += -1 if xv > 0 else 1
-				yv -= 1
-
-				if lx <= x <= hx and ly <= y <= hy:
-					break
-				if yv < 0 and y < ly:
-					break
-				if xv > 0 and x > hx:
-					break
-			if lx <= x <= hx and ly <= y <= hy:
+	for xv in range(hx):
+		for yv in range(ly, 1000):
+			success, max_y = launch(xv, yv, lx, hx, ly, hy)
+			if success:
 				best_y = max(best_y, max_y)
 	return best_y
 
@@ -47,29 +50,7 @@ def test_one():
 def solve_two(data: str):
 	[[lx, hx], [ly, hy]] = [list(map(int, side.split('=')[1].split('..'))) for side in data.strip().split(': ')[1].split(', ')]
 
-
-	count = 0
-	for ixv in range(hx * 2):
-		for iyv in range(ly * 2, 1000):
-			max_y = 0
-			x = 0
-			y = 0
-			xv = ixv
-			yv = iyv
-			for _ in range(1000):
-				x += xv
-				y += yv
-				max_y = max(max_y, y)
-
-				if xv:
-					xv += -1 if xv > 0 else 1
-				yv -= 1
-
-				if lx <= x <= hx and ly <= y <= hy:
-					count += 1
-					break
-
-	return count
+	return sum(launch(xv, yv, lx, hx, ly, hy)[0] for xv in range(hx * 2) for yv in range(ly * 2, 1000))
 
 
 def test_two():
