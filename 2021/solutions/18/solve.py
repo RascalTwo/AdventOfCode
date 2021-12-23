@@ -14,31 +14,35 @@ def explode(fish: Snailfish):
 	for l, left in enumerate(fish[:-1]):
 		r = l + 1
 		right = fish[r]
-		if left['depth'] == right['depth'] and left['depth'] > 4 and r - l == 1:
-			l_reg = l - 1
-			if l_reg >= 0:
-				fish[l_reg]['value'] += left['value']
-			r_reg = r + 1
-			if r_reg < len(fish):
-				fish[r_reg]['value'] += right['value']
 
-			del fish[r]
-			del fish[l]
-			fish.insert(l, SnailValue(value=0, depth=left['depth'] - 1))
-			return True
+		if left['depth'] != right['depth'] or left['depth'] <= 4:
+			continue
+
+		if l - 1 >= 0:
+			fish[l - 1]['value'] += left['value']
+		if r + 1 < len(fish):
+			fish[r + 1]['value'] += right['value']
+
+		del fish[r]
+		del fish[l]
+		fish.insert(l, SnailValue(value=0, depth=left['depth'] - 1))
+		return True
+
 	return False
 
 
 def split(fish: Snailfish):
 	for i, splitting in enumerate(fish):
-		if splitting['value'] >= 10:
-			half = splitting['value'] / 2
-			left = math.floor(half)
-			right = math.ceil(half)
-			del fish[i]
-			fish.insert(i, SnailValue(value=left, depth=splitting['depth'] + 1))
-			fish.insert(i + 1, SnailValue(value=right, depth=splitting['depth'] + 1))
-			return True
+		if splitting['value'] < 10:
+			continue
+		del fish[i]
+
+		half = splitting['value'] / 2
+		fish.insert(i, SnailValue(value=math.floor(half), depth=splitting['depth'] + 1))
+		fish.insert(i + 1, SnailValue(value=math.ceil(half), depth=splitting['depth'] + 1))
+
+		return True
+
 	return False
 
 
@@ -66,9 +70,7 @@ def add(*adding: SnailValue) -> Snailfish:
 		value['depth'] += 1
 
 	while True:
-		if explode(added):
-			continue
-		if split(added):
+		if explode(added) or split(added):
 			continue
 		return added
 
@@ -78,20 +80,25 @@ def calculate_magnitude(fish: Snailfish) -> int:
 		for l, left in enumerate(fish[:-1]):
 			r = l + 1
 			right = fish[r]
-			if left['depth'] == right['depth'] and r - l == 1:
-				pair_magnitude = (left['value'] * 3) + (right['value'] * 2)
-				del fish[r]
-				del fish[l]
-				fish.insert(l, SnailValue(value=pair_magnitude, depth=left['depth'] - 1))
-				break
+			if left['depth'] != right['depth']:
+				continue
+
+			del fish[r]
+			del fish[l]
+			fish.insert(l, SnailValue(value=(left['value'] * 3) + (right['value'] * 2), depth=left['depth'] - 1))
+			break
+
 	return fish[0]['value']
+
 
 def solve_one(data: str):
 	snailfish = [list(parse_snailfish(line)) for line in data.strip().split('\n')][::-1]
 
 	while len(snailfish) != 1:
 		snailfish.append(add(*snailfish.pop(), *snailfish.pop()))
+
 	return calculate_magnitude(snailfish[0])
+
 
 def test_one():
 	with open(os.path.join(DIRPATH, 'input.in')) as input_file:
@@ -104,10 +111,7 @@ def test_one():
 	assert solve_one('[[[5,0],[7,4]],[5,5]],[6,6]') == 1137
 	assert solve_one('[[[8,7],[7,7]],[[8,6],[7,7]]],[[[0,7],[6,6]],[8,7]]') == 3488
 	assert solve_one('[[[6,6],[7,6]],[[7,7],[7,0]]],[[[7,7],[7,7]],[[7,8],[9,9]]]') == 4140
-	assert solve_one('''[1,1]
-[2,2]
-[3,3]
-[4,4]''')
+
 	assert solve_one('''[[[0,[4,5]],[0,0]],[[[4,5],[2,6]],[9,5]]]
 [7,[[[3,7],[4,3]],[[6,3],[8,8]]]]
 [[2,[[0,8],[3,4]]],[[[6,7],1],[7,[1,6]]]]
@@ -134,13 +138,7 @@ def test_one():
 def solve_two(data: str):
 	snailfish = [list(parse_snailfish(line)) for line in data.strip().split('\n')][::-1]
 
-	best = 0
-	for l, left in enumerate(snailfish):
-		for r, right in enumerate(snailfish):
-			if r == l:
-				continue
-			best = max(best, calculate_magnitude(add(*copy.deepcopy(left), *copy.deepcopy(right))))
-	return best
+	return max(calculate_magnitude(add(*copy.deepcopy(left), *copy.deepcopy(right))) for l, left in enumerate(snailfish) for r, right in enumerate(snailfish) if r != l)
 
 
 def test_two():
