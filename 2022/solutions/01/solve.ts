@@ -1,11 +1,18 @@
 const fs = require('fs');
 const assert = require('assert');
 
-const sumArray = (array: number[]) => array.reduce((sum, n) => sum + n, 0);
-const getElfSums = (data: string) => data.split('\n\n').map(elf => sumArray(elf.split('\n').map(Number)));
+function solveOne(data: string){
+	let largest = -Infinity, current = 0;
 
-function solveOne(data: string): any{
-	return Math.max(...getElfSums(data));
+	for (const line of data.split('\n')) {
+		if (line === '') {
+			largest = Math.max(largest, current);
+			current = 0;
+		} else current += +line;
+	}
+	largest = Math.max(largest, current);
+
+	return largest;
 }
 
 
@@ -28,6 +35,9 @@ function solveOne(data: string): any{
 	console.log(solveOne(data));
 })();
 
+
+const sumArray = (array: number[]) => array.reduce((sum, n) => sum + n, 0);
+const getElfSums = (data: string) => data.split('\n\n').map(elf => sumArray(elf.split('\n').map(Number)));
 
 function solveTwo(data: string): any{
 	return sumArray(getElfSums(data).sort((a, b) => b - a).slice(0, 3));
