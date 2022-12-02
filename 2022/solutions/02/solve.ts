@@ -2,90 +2,63 @@ const fs = require('fs');
 const assert = require('assert');
 
 
+function whoWon(a: 'R' | 'P' | 'S', b: 'R' | 'P' | 'S'): -1 | 0 | 1 {
+	if (a === b) return 0;
+	if (a === 'R' && b === 'P') return 1;
+	if (a === 'R' && b === 'S') return -1;
+	if (a === 'P' && b === 'R') return -1;
+	if (a === 'P' && b === 'S') return 1;
+	if (a === 'S' && b === 'R') return 1;
+	if (a === 'S' && b === 'P') return -1;
+}
+
+const buildRPSMapper = <R extends string, P extends string, S extends string>(r: R, p: P, s: S) => (char: R | P | S) => ({ [r]: 'R', [p]: 'P', [s]: 'S' }[char] as 'R' | 'P' | 'S');
+
+const opponentToRPS = buildRPSMapper('A', 'B', 'C');
+const choiceToRPS = buildRPSMapper('X', 'Y', 'Z');
+
+const VALUES = ' RPS';
 
 function solveOne(data: string): any {
-	data = data.replace(/A/g, 'R').replace(/B/g, 'P').replace(/C/g, 'S')
-	const values = {
-		R: 1,
-		P: 2,
-		S: 3,
-	}
-	const scores = data.split('\n').map(line => {
-		const [a, wrongB] = line.split(' ');
-		const b = {
-			X: 'R',
-			Y: 'P',
-			Z: 'S',
-		}[wrongB];
-		if (a === b) return 3 + values[b];
-		let result;
-		if (a === 'R' && b === 'P') result = 'won'
-		else if (a === 'R' && b === 'S') result = 'lost'
-		else if (a === 'P' && b === 'R') result = 'lost'
-		else if (a === 'P' && b === 'S') result = 'won'
-		else if (a === 'S' && b === 'R') result = 'won'
-		else if (a === 'S' && b === 'P') result = 'lost'
+	return [...data.matchAll(/(.) (.)/g)].reduce((sum, [_, a, b]) => {
+		const choice = choiceToRPS(b as 'X' | 'Y' | 'Z');
+		const choiceValue = VALUES.indexOf(choice);
 
-		let score = values[b]
-		if (result === 'won') score += 6
+		const winner = whoWon(opponentToRPS(a as 'A' | 'B' | 'C'), choice);
+		const multiplier = winner === -1 ? 0 : winner === 0 ? 1 : 2;
 
-		return score;
-	})
-
-	return scores.reduce((a, b) => a + b, 0);
+		return sum + choiceValue + (multiplier * 3);
+	}, 0);
 }
 
 
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
-	assert.deepStrictEqual(solveOne(`R Y
-P X
-S Z`), 15);
+	assert.deepStrictEqual(solveOne(`A Y
+B X
+C Z`), 15);
 	console.log(solveOne(data));
 })();
 
+const RPS = 'RPS';
+const XYZ = 'XYZ';
 
 function solveTwo(data: string): any {
-	data = data.replace(/A/g, 'R').replace(/B/g, 'P').replace(/C/g, 'S')
-	const values = {
-		R: 1,
-		P: 2,
-		S: 3,
-	}
+	const getChoiceOffset = (char: string, offset: number) => RPS[(RPS.indexOf(char) + offset) % RPS.length];
 
-	const whateverBeats = chosen => {
-		if (chosen === 'R') return 'P'
-		if (chosen === 'P') return 'S'
-		if (chosen === 'S') return 'R'
-	}
-
-	const whateverLosesTo = chosen => {
-		if (chosen === 'P') return 'R'
-		if (chosen === 'S') return 'P'
-		if (chosen === 'R') return 'S'
-	}
-	const scores = data.split('\n').map(line => {
-		const [a, wrongB] = line.split(' ');
-		const should = {
-			X: 'lose',
-			Y: 'draw',
-			Z: 'win',
-		}[wrongB];
-		console.log(a, should)
-		if (should === 'draw') return 3 + values[a];
-		else if (should === 'win') return 6 + values[whateverBeats(a)]
-		console.log(a, whateverLosesTo(a))
-		return values[whateverLosesTo(a)]
-	})
-	console.log(scores)
-	return scores.reduce((a, b) => a + b, 0);
+	return [...data.matchAll(/(.) (.)/g)].reduce((sum, [_, a, b]) => {
+		const opponent = opponentToRPS(a as 'A' | 'B' | 'C');
+		const myChoice = b === 'Y' ? opponent : getChoiceOffset(opponent, 1 + +(b === 'X'));
+		const multiplier = XYZ.indexOf(b);
+		return sum + VALUES.indexOf(myChoice) + (multiplier * 3)
+	}, 0)
 }
 
 
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
-	assert.deepStrictEqual(solveTwo(`R Y
-P X
-S Z`), 12);
+	assert.deepStrictEqual(solveTwo(`A Y
+B X
+C Z`), 12);
 	console.log(solveTwo(data));
 })();
