@@ -2,30 +2,15 @@ const fs = require('fs');
 const assert = require('assert');
 
 
+const calculateValue = (char: string) => char.charCodeAt(0) - (char === char.toLowerCase() ? 96 : 38);
 
 function solveOne(data: string): any{
-	const found = [];
-	for (const line of data.split('\n')){
-		const middleLength = line.length / 2;
-		const firstHalf = line.slice(0, middleLength);
-		const secondHalf = line.slice(middleLength);
-		const similarLetterInBothHalves = firstHalf.split('').find(char => secondHalf.includes(char));
-		found.push(similarLetterInBothHalves);
-	}
-	const values = found.map(char => {
-		// if is lowercase
-		if (char === char.toLowerCase()){
-			// a = 1
-			// z = 26
-			const value = char.charCodeAt(0) - 96;
-			return value
-		}
-		// A = 27
-		// Z = 52
-		return char.charCodeAt(0) - 38;
-	})
-	//console.log(values);
-	return values.reduce((acc, val) => acc + val, 0);
+	return data.split('\n').reduce((sum, rucksack) => {
+		const middleLength = rucksack.length / 2;
+		const secondHalf = new Set(rucksack.slice(middleLength));
+		const commonItem = [...rucksack.slice(0, middleLength)].find(char => secondHalf.has(char));
+		return sum + calculateValue(commonItem);
+	}, 0);
 }
 
 
@@ -42,37 +27,12 @@ CrZsJsPPZsGzwwsLwLmpwMDw`), 157);
 
 
 function solveTwo(data: string): any{
-	const groupsOfThreeLines = [];
-	let group = [];
-	for (const line of data.split('\n')){
-		group.push(line);
-		if (group.length === 3){
-			groupsOfThreeLines.push(group);
-			group = [];
-		}
-	}
-
-	const found = [];
-	for (const group of groupsOfThreeLines){
-		// get the once character that appears in all three lines
-		const similarLetters = group[0].split('').filter(char => group[1].includes(char) && group[2].includes(char));
-		found.push(similarLetters[0]);
-	}
-	console.log(found);
-	const values = found.map(char => {
-		// if is lowercase
-		if (char === char.toLowerCase()){
-			// a = 1
-			// z = 26
-			const value = char.charCodeAt(0) - 96;
-			return value
-		}
-		// A = 27
-		// Z = 52
-		return char.charCodeAt(0) - 38;
-	})
-	console.log(values);
-	return values.reduce((acc, val) => acc + val, 0);
+	return data.split(/(.+\n.+\n.+)/g).map(x => x.trim()).filter(x => x.length > 0).map(x => x.split('\n')).reduce((sum, group) => {
+		const firstIndex = group.reduce((firstIndex, line, index) => line.length < group[firstIndex].length ? index : firstIndex, 0);
+		const [second, third] = [0, 1, 2].filter(i => i !== firstIndex).map(i => new Set(group[i]));
+		const commonItem = [...group[firstIndex]].find(char => second.has(char) && third.has(char));
+		return sum + calculateValue(commonItem);
+	}, 0)
 }
 
 
