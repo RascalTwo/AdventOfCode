@@ -2,221 +2,68 @@ const fs = require('fs');
 const assert = require('assert');
 
 
+const moveSupplies = (data: string, is9001: boolean) => {
+	const [rawStack, rawInstructions] = data.split('\n\n');
 
-function solveOne(data: string, stacks: any): any {
-	console.log(data);
-	for (const inst of data.split('\n')) {
-		const count = parseInt(inst.split('move ')[1])
-		const orig = parseInt(inst.split(' from ')[1])
-		const dest = parseInt(inst.split(' to ')[1])
-		for (let i = 0; i < count; i++) {
-			stacks[dest].push(stacks[orig].pop())
+
+	const stacks: Record<string, string[]> = {};
+
+	const rawCrates = rawStack.split('\n').reverse();
+	const rawIndexes = rawCrates.shift();
+	for (const { 0: value, index } of rawIndexes.matchAll(/\d+/g)) {
+		stacks[value] = [];
+		for (const line of rawCrates) {
+      if (line[index - 1] !== '[') break
+			stacks[value].push(line.slice(index).split(']')[0]);
 		}
 	}
-	// get tops of all stacks
-	const tops = Object.values(stacks).map((stack: any) => stack[stack.length - 1])
-	return tops.join('')
+
+
+	for (const [ _, ...instruction] of rawInstructions.matchAll(/move (\d+) from (\d+) to (\d+)/g)) {
+		const [count, origin, destination] = instruction.map(Number);
+		if (!is9001) for (let i = 0; i < count; i++) stacks[destination].push(stacks[origin].pop());
+		else stacks[destination].push(...stacks[origin].splice(-count));
+	}
+
+	return Object.values(stacks).map(stack => stack[stack.length - 1]).join('');
 }
 
-/*
-			[D]    
-	[N] [C]    
-	[Z] [M] [P]
-	 1   2   3 
-	 */
+
+function solveOne(data: string): any {
+	return moveSupplies(data, false);
+}
+
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
-	/*assert.deepStrictEqual(solveOne(`move 1 from 2 to 1
-	move 3 from 1 to 3
-	move 2 from 2 to 1
-	move 1 from 1 to 2`, {
-		1: ['Z', 'N'],
-		2: ['M', 'C', 'D'],
-		3: ['P']
-	}), 'CMZ');*/
-	/*
-			[G]         [P]         [M]    
-			[V]     [M] [W] [S]     [Q]    
-			[N]     [N] [G] [H]     [T] [F]
-			[J]     [W] [V] [Q] [W] [F] [P]
-	[C] [H]     [T] [T] [G] [B] [Z] [B]
-	[S] [W] [S] [L] [F] [B] [P] [C] [H]
-	[G] [M] [Q] [S] [Z] [T] [J] [D] [S]
-	[B] [T] [M] [B] [J] [C] [T] [G] [N]
-	 1   2   3   4   5   6   7   8   9 
-	 */
-	const stacks = {
-		1: ['C', 'S', 'G', 'B'].reverse(),
-		2: ['G',
-			'V',
-			'N',
-			'J',
-			'H',
-			'W',
-			'M',
-			'T',].reverse(),
-		3: ['M', 'Q', 'S'],
-		4: [
-			'M',
-			'N',
-			'W',
-			'T',
-			'L',
-			'S',
-			'B',].reverse(),
-		5: [
-			'P',
-			'W',
-			'G',
-			'V',
-			'T',
-			'F',
-			'Z',
-			'J',
-		].reverse(),
-		6: [
-			'S',
-			'H',
-			'Q',
-			'G',
-			'B',
-			'T',
-			'C'
-		].reverse(),
-		7: [
-			'W',
-			'B',
-			'P',
-			'J',
-			'T',
-		].reverse(),
-		8: [
-			'M',
-			'Q',
-			'T',
-			'F',
-			'Z',
-			'C',
-			'D',
-			'G',
-		].reverse(),
-		9: [
-			'F',
-			'P',
-			'B',
-			'H',
-			'S',
-			'N',
-		].reverse()
-	}
-	console.log(solveOne(data.split('\n\n')[1].trim(), stacks));
+	assert.deepStrictEqual(solveOne(`    [D]    
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+
+move 1 from 2 to 1
+move 3 from 1 to 3
+move 2 from 2 to 1
+move 1 from 1 to 2`), 'CMZ');
+	console.log(solveOne(data));
 })();
 
 
-function solveTwo(data: string, stacks: any): any {
-	console.log(data);
-	for (const inst of data.split('\n')) {
-		const count = parseInt(inst.split('move ')[1])
-		const orig = parseInt(inst.split(' from ')[1])
-		const dest = parseInt(inst.split(' to ')[1])
-		const newArr = [];
-		// get count off of top into new array
-		for (let i = 0; i < count; i++) {
-			newArr.push(stacks[orig].pop())
-		}
-		stacks[dest].push(...newArr.reverse())
-	}
-	// get tops of all stacks
-	const tops = Object.values(stacks).map((stack: any) => stack[stack.length - 1])
-	return tops.join('')
+function solveTwo(data: string): any {
+	return moveSupplies(data, true);
 }
 
 
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
-	
-	assert.deepStrictEqual(solveTwo(`move 1 from 2 to 1
-	move 3 from 1 to 3
-	move 2 from 2 to 1
-	move 1 from 1 to 2`, {
-		1: ['Z', 'N'],
-		2: ['M', 'C', 'D'],
-		3: ['P']
-	}), 'MCD');
-	/*
-			[G]         [P]         [M]    
-			[V]     [M] [W] [S]     [Q]    
-			[N]     [N] [G] [H]     [T] [F]
-			[J]     [W] [V] [Q] [W] [F] [P]
-	[C] [H]     [T] [T] [G] [B] [Z] [B]
-	[S] [W] [S] [L] [F] [B] [P] [C] [H]
-	[G] [M] [Q] [S] [Z] [T] [J] [D] [S]
-	[B] [T] [M] [B] [J] [C] [T] [G] [N]
-	 1   2   3   4   5   6   7   8   9 
-	 */
-	 const stacks = {
-		1: ['C', 'S', 'G', 'B'].reverse(),
-		2: ['G',
-			'V',
-			'N',
-			'J',
-			'H',
-			'W',
-			'M',
-			'T',].reverse(),
-		3: ['M', 'Q', 'S'],
-		4: [
-			'M',
-			'N',
-			'W',
-			'T',
-			'L',
-			'S',
-			'B',].reverse(),
-		5: [
-			'P',
-			'W',
-			'G',
-			'V',
-			'T',
-			'F',
-			'Z',
-			'J',
-		].reverse(),
-		6: [
-			'S',
-			'H',
-			'Q',
-			'G',
-			'B',
-			'T',
-			'C'
-		].reverse(),
-		7: [
-			'W',
-			'B',
-			'P',
-			'J',
-			'T',
-		].reverse(),
-		8: [
-			'M',
-			'Q',
-			'T',
-			'F',
-			'Z',
-			'C',
-			'D',
-			'G',
-		].reverse(),
-		9: [
-			'F',
-			'P',
-			'B',
-			'H',
-			'S',
-			'N',
-		].reverse()
-	}
-	console.log(solveTwo(data.split('\n\n')[1].trim(), stacks));
+
+	assert.deepStrictEqual(solveTwo(`    [D]    
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+
+move 1 from 2 to 1
+move 3 from 1 to 3
+move 2 from 2 to 1
+move 1 from 1 to 2`), 'MCD');
+	console.log(solveTwo(data));
 })();
