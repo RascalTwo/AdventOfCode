@@ -2,40 +2,42 @@ const fs = require('fs');
 const assert = require('assert');
 
 
-
-function solveOne(data: string): any{
-	for (let i = 0; i < data.length - 4; i++) {
-		let next4chars = data.substr(i, 4);
-		next4chars
-		if (new Set(next4chars).size === 4){
-			return i + 4
+function solve(signal: string, distinctCount: number){
+	for (let i = 0; i <= signal.length - distinctCount; i++) {
+		if (new Set(signal.substring(i, i + distinctCount)).size === distinctCount) {
+			return i + distinctCount;
 		}
 	}
-	return true;
+}
+
+
+function solveOne(data: string): any {
+	return solve(data, 4);
 }
 
 
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
 	assert.deepStrictEqual(solveOne(`mjqjpqmgbljsphdztnvjfqwrcgsmlb`), 7);
+	assert.deepStrictEqual(solveOne(`bvwbjplbgvbhsrlpgdmjqwftvncz`), 5);
+	assert.deepStrictEqual(solveOne(`nppdvjthqldpwncqszvftbrmjlhg`), 6);
+	assert.deepStrictEqual(solveOne(`nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg`), 10);
+	assert.deepStrictEqual(solveOne(`zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw`), 11);
 	console.log(solveOne(data));
 })();
 
 
-function solveTwo(data: string): any{
-	for (let i = 0; i < data.length - 14; i++) {
-		let next4chars = data.substr(i, 14);
-		next4chars
-		if (new Set(next4chars).size === 14){
-			return i + 14
-		}
-	}
-	return true;
+function solveTwo(data: string): any {
+	return solve(data, 14);
 }
 
 
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
 	assert.deepStrictEqual(solveTwo(`mjqjpqmgbljsphdztnvjfqwrcgsmlb`), 19);
+	assert.deepStrictEqual(solveTwo(`bvwbjplbgvbhsrlpgdmjqwftvncz`), 23);
+	assert.deepStrictEqual(solveTwo(`nppdvjthqldpwncqszvftbrmjlhg`), 23);
+	assert.deepStrictEqual(solveTwo(`nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg`), 29);
+	assert.deepStrictEqual(solveTwo(`zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw`), 26);
 	console.log(solveTwo(data));
 })();
