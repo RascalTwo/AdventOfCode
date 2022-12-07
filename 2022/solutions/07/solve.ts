@@ -3,60 +3,99 @@ const assert = require('assert');
 
 
 
-interface Entity {
-	children: Record<string, Entity>,
-	size?: number;
+interface BaseEntity {
+	type: 'file' | 'directory';
 }
 
-function solveOne(data: string): any{
-	const root: Entity = {
+interface FileEntity {
+	type: 'file';
+	size: number;
+}
+
+interface DirectoryEntity {
+	type: 'directory';
+	children: Record<string, FullEntity>;
+}
+
+type FullEntity = FileEntity | DirectoryEntity;
+
+interface CommandProps {
+	args: string[]
+	output: string[];
+}
+
+
+function buildFilesystem(data: string): DirectoryEntity {
+	const root: DirectoryEntity = {
+		type: 'directory',
 		children: {}
 	}
-	let path = ['/']
-	for (const command of data.split('$ ').slice(1)){
-		const [cmd, ...args] = command.split('\n')[0].split(' ');
-		const output = command.split('\n').slice(1).map(line => line.trim()).filter(line => line)
-		if (cmd === 'cd'){
-			if (args[0] === '/') path = ['/'];
-			else if (args[0] === '..') path.pop();
-			else path.push(args[0]);
-		}
-		else if (cmd === 'ls') {
-			let currentEntity = root;
-			for (const dir of path){
-				if (!currentEntity.children[dir]) currentEntity.children[dir] = {
-					children: {}
-				}
-				currentEntity = currentEntity.children[dir];
-			}
-			for (const line of output){
-				if (line.startsWith('dir')){
-					currentEntity.children[line.slice(4)] = {
-						children: {}
-					}
-				} else {
-					const [size, name] = line.split(' ');
-					currentEntity.children[name] = {
-						children: {},
-						size: parseInt(size)
-					}
-				}
-			}
-		}
-	}
-	let found: number[] = [];
-	function getSize(entity: Entity){
-		if (entity.size) return entity.size;
-		let size = 0;
-		for (const child of Object.values(entity.children)){
-			size += getSize(child);
-		}
-		if (size < 100000) found.push(size);
-		return size;
-	}
-	getSize(root);
+	let workPath: string[] = []
 
-	return found.reduce((a, b) => a + b, 0);
+	function getDirectoryEntity(entity: DirectoryEntity, path: string[]): DirectoryEntity {
+		if (!path.length) return entity;
+		const [dir, ...rest] = path;
+		return getDirectoryEntity(entity.children[dir] as DirectoryEntity, rest);
+	}
+
+	function cd({ args: [destination] }: CommandProps) {
+		if (destination === '/') workPath = [];
+		else if (destination === '..') workPath.pop();
+		else workPath.push(destination);
+	}
+
+	function ls({ output }: CommandProps) {
+		const cwd = getDirectoryEntity(root, workPath)
+		for (const line of output) {
+			if (line.startsWith('dir')) cwd.children[line.slice(4)] = {
+				type: 'directory',
+				children: {}
+			}
+			else {
+				const [size, name] = line.split(' ');
+				cwd.children[name] = {
+					type: 'file',
+					size: parseInt(size)
+				}
+			}
+		}
+	}
+
+	for (const command of data.split(/^\$ /gm).slice(1)) {
+		const [line, ...output] = command.split('\n').map(line => line.trim()).filter(Boolean);
+		const [cmd, ...args] = line.split(' ');
+		switch (cmd) {
+			case 'cd': cd({ args, output });
+			case 'ls': ls({ args, output });
+		}
+	}
+	return root
+}
+
+function getSize(entity: FullEntity): number {
+	return entity.type === 'directory'
+		? Object.values(entity.children).reduce((size, child) => size + getSize(child), 0)
+		: entity.size;
+}
+
+function solveOne(data: string, maximumDirectorySize = 100000): any {
+	const root = buildFilesystem(data);
+
+	const foundSizes: number[] = [];
+
+	const stack: DirectoryEntity[] = [root];
+	while (stack.length){
+		const entity = stack.pop()!;
+
+		let size = 0;
+		for (const child of Object.values(entity.children)) {
+			size += getSize(child);
+			if (child.type === 'directory') stack.push(child);
+		}
+		if (size <= maximumDirectorySize) foundSizes.push(size);
+	}
+
+	return foundSizes.reduce((a, b) => a + b, 0);
 }
 
 
@@ -90,67 +129,24 @@ $ ls
 })();
 
 
-function solveTwo(data: string): any{
-	const root: Entity = {
-		children: {}
-	}
-	let path = []
-	for (const command of data.split('$ ').slice(1)){
-		const [cmd, ...args] = command.split('\n')[0].split(' ');
-		const output = command.split('\n').slice(1).map(line => line.trim()).filter(line => line)
-		if (cmd === 'cd'){
-			if (args[0] === '/') path = [];
-			else if (args[0] === '..') path.pop();
-			else path.push(args[0]);
-		}
-		else if (cmd === 'ls') {
-			let currentEntity = root;
-			for (const dir of path){
-				if (!currentEntity.children[dir]) currentEntity.children[dir] = {
-					children: {}
-				}
-				currentEntity = currentEntity.children[dir];
-			}
-			for (const line of output){
-				if (line.startsWith('dir')){
-					currentEntity.children[line.slice(4)] = {
-						children: {}
-					}
-				} else {
-					const [size, name] = line.split(' ');
-					currentEntity.children[name] = {
-						children: {},
-						size: parseInt(size)
-					}
-				}
-			}
-		}
-	}
-	const needed = 40000000;
+function solveTwo(data: string, totalSpace = 70000000, neededSpace = 30000000): any {
+	const root = buildFilesystem(data);
 	const used = getSize(root);
-	function getSize(entity: Entity){
-		if (entity.size) return entity.size;
-		let size = 0;
-		for (const child of Object.values(entity.children)){
-			size += getSize(child);
+	const needToDelete = used - totalSpace + neededSpace;
+
+	function recur(entity: FullEntity): number[] {
+		if (entity.type === 'file') return [];
+
+		const size = getSize(entity)
+		const deletables = size > needToDelete ? [size] : [];
+
+		for (const child of Object.values(entity.children)) {
+			deletables.push(...recur(child));
 		}
-		return size;
+		return deletables
 	}
 
-	let possibles: number[] = [];
-	function findDeletableDirsThatWillFreeUpEnoughSpace(entity: Entity){
-		if (entity.size) return;
-		let sizeOfChildren = 0;
-		for (const child of Object.values(entity.children)){
-			sizeOfChildren += getSize(child);
-		}
-		if (used - sizeOfChildren < needed) possibles.push(sizeOfChildren);
-		for (const child of Object.values(entity.children)){
-			findDeletableDirsThatWillFreeUpEnoughSpace(child);
-		}
-	}
-	findDeletableDirsThatWillFreeUpEnoughSpace(root);
-	return Math.min(...possibles);
+	return Math.min(...recur(root));
 }
 
 
