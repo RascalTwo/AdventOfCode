@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<script src="https://d3js.org/d3.v6.js"></script>
+<div id="my_dataviz"></div>
+<dialog open>
+	<form method="dialog">
+		<fieldset>
+			<legend>Input</legend>
+			<label>
+				File
+				<input type="file">
+			</label>
+			<label>
+				Content
+				<textarea name="content"></textarea>
+			</label>
+			<label>
+				Duration
+				<input type="number" min="1" step="1" name="duration" value="60"></input>
+			</label>
+			<button>Run</button>
+		</fieldset>
+	</form>
+</dialog>
+<style>
+	body,
+	#my_dataviz {
+		box-sizing: content-box;
+		margin: 0;
+		padding: 0;
+		background-color: rgb(20, 28, 44);
+		overflow: hidden;
+	}
+
+	dialog {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+	}
+
+	fieldset {
+		display: flex;
+		flex-direction: column;
+	}
+</style>
+
+<script>
+	// TODO - finish cleaning up old functions
+	// TODO - properly add/remove nodes from simulation
+	// TODO - add label to currently largest elf
+	// TODO - add individual animations to each calorie summation
+
+	function fisherYates(array) {
+		for (let i = array.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[array[i], array[j]] = [array[j], array[i]];
+		}
+		return array;
+	}
+
+	document.querySelector('input').addEventListener('change', e => {
+		const file = e.currentTarget.files[0];
+		if (!file) return;
+
+		const reader = new FileReader();
+		reader.onload = e => {
+			document.querySelector('textarea').value = e.target.result;
+		}
+		reader.readAsText(file);
+	});
+
+	document.querySelector('form').addEventListener('submit', async e => {
+		const data = new FormData(e.currentTarget)
+		const content = data.get('content');
+		if (!content) return alert('Content is empty')
+		const duration = (+data.get('duration') || 60)
+		startAnimation(content, duration * 1000);
+	});
+
+	function startAnimation(INPUT, DURATION) {
+		const WIDTH = window.innerWidth;
+		const HEIGHT = window.innerHeight;
+
+		const elves = INPUT.split('\n\n').reduce((map, line, index) => map.set(index, { index, calories: line.split('\n').map(Number) }), new Map());
+		for (const elf of elves.values()) elf.color = Math.floor(Math.random() * elves.size);
+
+		const grid = (() => {
+			const width = Math.ceil(Math.sqrt(elves.size));
+			const gridX = WIDTH / width;
+
+			const height = Math.ceil(Math.sqrt(elves.size));
+			const gridY = HEIGHT / height;
+
+			const grid = [];
+			for (let y = 0; y < height; y++) {
+				for (let x = 0; x < width; x++) {
+					grid.push({ x: x * gridX + (gridX / 2), y: y * gridY + (gridY / 2) });
+				}
+			}
+			return fisherYates(grid)
+		})();
+
+		for (const elf of elves.values()) {
+			elf.x = grid[elf.index].x;
+			elf.y = grid[elf.index].y;
+		}
+		let data = fisherYates([...elves.values()].flatMap(elf => elf.calories.map(cal => ({ elf: elf.index, value: cal }))))
+
+
+		const svg = d3.select("#my_dataviz")
+			.append("svg")
+			.attr("width", WIDTH)
+			.attr("height", HEIGHT)
+
+		const size = d3.scaleLinear()
+			.domain([0, [...elves.values()].reduce((maximum, elf) => Math.max(maximum, elf.calories.reduce((acc, c) => acc + c, 0)), 0)])
+			.range([7, 55])
+
+		nodes = svg.append("g")
+			.selectAll("circle")
+			.data(data)
+			.join("circle")
+			.attr("class", "node")
+			.attr("r", d => size(d.value))
+			.attr("cx", d => Math.random() * WIDTH)
+			.attr("cy", d => Math.random() * HEIGHT)
+			.style("fill", d => `hsl(${elves.get(d.elf).color * 360 / elves.size}, 100%, 50%)`)
+			.style("fill-opacity", 0.8)
+			.attr("stroke", "black")
+
+
+		simulation = d3.forceSimulation()
+			.force("center", d3.forceCenter(WIDTH / 2, HEIGHT / 2))
+			.force("collide", d3.forceCollide().strength(1).radius(function (d) { return (size(d.value)) }).iterations(1)) // Force that avoids circle overlapping
+			.force('x', d3.forceX().x(d => elves.get(d.elf).x))
+			.force('y', d3.forceY().y(d => elves.get(d.elf).y))
+
+		const allSelections = [nodes]
+
+		function ticked(d) {
+			for (const sel of allSelections) {
+				sel
+					.attr("cx", d => d.x)
+					.attr("cy", d => d.y)
+			}
+		}
+		simulation
+			.nodes(data)
+			.on("tick", ticked);
+
+		const combineRate = DURATION / elves.size;
+
+		setTimeout(async () => {
+			let largest = null;
+			for (const pos of grid) {
+				const elf = [...elves.values()].find(elf => elf.x === pos.x && elf.y === pos.y);
+				if (!elf) continue;
+
+				const elfNodes = nodes.filter(d => d.elf === elf.index);
+				const centerOfNodes = [...elfNodes].reduce((acc, node) => {
+					acc.x += +node.getAttribute('cx')
+					acc.y += +node.getAttribute('cy')
+					return acc;
+				}, { x: 0, y: 0 });
+
+				const mergedNode = {
+					elf: elf.index,
+					value: [...elfNodes].reduce((acc, node) => acc + node.__data__.value, 0),
+					x: centerOfNodes.x / [...elfNodes].length,
+					y: centerOfNodes.y / [...elfNodes].length,
+				}
+
+				elfNodes.remove();
+				data = data.filter(d => d.elf !== elf.index);
+				nodes = nodes.filter(d => d.elf !== elf.index);
+				simulation.nodes(simulation.nodes().filter(node => node.elf !== elf.index));
+
+				const newNode = svg.append("g")
+					.selectAll("circle")
+					.data([mergedNode])
+					.join("circle")
+					.attr("class", "node")
+					.attr("r", d => size(d.value))
+					.attr("cx", d => d.x)
+					.attr("cy", d => d.y)
+					.style("fill", "grey")
+					.style("fill-opacity", 0.8)
+					.attr("stroke", "black")
+				allSelections.push(newNode);
+
+				if (!largest || [...newNode][0].__data__.value > largest.__data__.value) {
+					if (largest) {
+						d3.select(largest).style("fill", "grey");
+						d3.select(largest).transition().duration(1000).style("fill-opacity", 0).remove().on('end', function (...args) {
+
+							simulation.nodes(simulation.nodes().filter(node => node.elf !== elf.index));
+						});
+					}
+					largest = [...newNode][0];
+					d3.select(largest).style("fill", "green");
+				} else {
+					newNode.transition().duration(1000).style("fill-opacity", 0).remove().on('end', function (...args) {
+						simulation.nodes(simulation.nodes().filter(node => node.elf !== elf.index));
+					});
+				}
+
+				// add new node to simulation
+				simulation.nodes([...simulation.nodes(), mergedNode])
+					.on("tick", ticked);
+				await new Promise(resolve => setTimeout(resolve, combineRate));
+			}
+			new Promise(resolve => setTimeout(resolve, 5000)).then(() => alert(largest.__data__.value));
+		}, 5000)
+	}
+</script>
