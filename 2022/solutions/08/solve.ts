@@ -2,47 +2,34 @@ const fs = require('fs');
 const assert = require('assert');
 
 
+const DIRECTIONS = [[-1, 0], [1, 0], [0, 1], [0, -1]] as [number, number][];
 
-function isVisible(r: number, c: number, matrix: string[][]): boolean {
-	for (const dir of [[-1, 0], [1, 0], [0, 1], [0, -1]]){
-		let current = [r, c];
-		let vis = true
-		while (true){
-			current = [current[0] + dir[0], current[1] + dir[1]];
-			if (!(current[0] >= 0 && current[0] < matrix.length && current[1] >= 0 && current[1] < matrix[0].length)) {
-				break;
-			}
-			// if value is larger then r, c then break
-			const value = matrix[current[0]][current[1]];
-			if (value >= matrix[r][c]) {
-				vis = false;
-				break;
-			}
-		}
-		if (vis) return vis
+const parseMatrix = (data: string) => data.trim().split('\n').map(row => [...row]);
+
+function isVisibleViaDirection(r: number, c: number, matrix: string[][], [vr, vc]: [number, number]): boolean {
+	for (let cr = r + vr, cc = c + vc; cr >= 0 && cr < matrix.length && cc >= 0 && cc < matrix[0].length; cr += vr, cc += vc) {
+		if (matrix[cr][cc] >= matrix[r][c]) return false;
 	}
-	return false;
+	return true;
 }
 
-function solveOne(data: string): any{
-	const matrix = data.trim().split('\n').map(row => row.split(''));
-	const edges = new Set();
-	for (let r = 0; r < matrix.length; r++) {
-		for (let c = 0; c < matrix[r].length; c++) {
-			if (r === 0 || c === 0 || r === matrix.length - 1 || c === matrix[0].length - 1) edges.add(`${r},${c}`);
-		}
-	}
 
-	let visble = edges.size;
+function* traverseInnerIndexes(matrix: string[][]) {
 	for (let r = 1; r < matrix.length - 1; r++) {
 		for (let c = 1; c < matrix[r].length - 1; c++) {
-			if (isVisible(r, c, matrix)) {
-				visble++
-			}
+			yield [r, c];
 		}
 	}
+}
 
-	return visble;
+function solveOne(data: string): any {
+	const matrix = parseMatrix(data);
+
+	return [...traverseInnerIndexes(matrix)]
+		.reduce(
+			(visible, [r, c]) => visible + +DIRECTIONS.some(dir => isVisibleViaDirection(r, c, matrix, dir)),
+			matrix.length * 2 + matrix[0].length * 2 - 4
+		);
 }
 
 (() => {
@@ -58,43 +45,23 @@ function solveOne(data: string): any{
 })();
 
 
-function calcScenic(r: number, c: number, matrix: string[][]) {
-	let sums = [];
-	for (const dir of [[-1, 0], [1, 0], [0, 1], [0, -1]]){
-		let score = 0;
-
-		let current = [r, c];
-		while (true){
-			current = [current[0] + dir[0], current[1] + dir[1]];
-
-			if (!(current[0] >= 0 && current[0] < matrix.length && current[1] >= 0 && current[1] < matrix[0].length)) {
-				break;
-			}
-			// if value is larger then r, c then break
-			score++
-			const value = matrix[current[0]][current[1]];
-			if (value >= matrix[r][c]) {
-				break;
-			}
-		}
-		sums.push(score)
-
+function calculateScenicScoreInDirection(r: number, c: number, matrix: string[][], [vr, vc]: [number, number]): number {
+	let score = 0;
+	for (let cr = r + vr, cc = c + vc; cr >= 0 && cr < matrix.length && cc >= 0 && cc < matrix[0].length; cr += vr, cc += vc) {
+		score++;
+		if (matrix[cr][cc] >= matrix[r][c]) break;
 	}
-	return sums.reduce((a, b) => a * b, 1);
+	return score;
 }
 
-function solveTwo(data: string): any{
-	const matrix = data.trim().split('\n').map(row => row.split(''));
+function solveTwo(data: string): any {
+	const matrix = parseMatrix(data);
 
-	let best = -Infinity
-	for (let r = 1; r < matrix.length - 1; r++) {
-		for (let c = 1; c < matrix[r].length - 1; c++) {
-			const s = calcScenic(r, c, matrix);
-			if (s > best) best = s
-		}
-	}
-
-	return best;
+	return [...traverseInnerIndexes(matrix)]
+		.reduce(
+			(best, [r, c]) => Math.max(best, DIRECTIONS.reduce((a, dir) => a * calculateScenicScoreInDirection(r, c, matrix, dir), 1)),
+			-Infinity
+		);
 }
 
 
