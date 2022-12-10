@@ -1,39 +1,48 @@
 const fs = require('fs');
 const assert = require('assert');
 
-
-
-function solveOne(data: string): any {
+function simulateCRT(data: string): [number, string] {
+	let cycle = 0;
 	let x = 1;
-	let cycle = 1;
+
+	let output = '';
 	const strengths: number[] = [];
-	function incCycle() {
-		cycle++
-		if (cycle === 20) {
-			strengths.push(cycle * x);
-			return;
-		}
-		let attempt = 20;
-		while (attempt <= cycle) {
-			attempt += 40
+
+	incrementCycle()
+
+	function incrementCycle() {
+		const horizontalPosition = cycle % 40;
+		if (cycle && horizontalPosition === 0) output += '\n';
+		output += Math.abs(x - horizontalPosition) < 2 ? '█' : ' ';
+
+		cycle++;
+
+		for (let attempt = 20; attempt <= cycle; attempt += 40){
 			if (cycle === attempt) {
 				strengths.push(cycle * x);
-				break
+				break;
 			}
 		}
 	}
+
 	for (const inst of data.trim().split('\n')) {
-		const [command, ...args] = inst.split(' ');
-		if (command === 'noop') {
-			incCycle()
-		}
-		if (command === 'addx') {
-			incCycle()
-			x += parseInt(args[0]);
-			incCycle()
+		const [command, arg] = inst.split(' ');
+		if (command === 'noop') incrementCycle();
+		else if (command === 'addx') {
+			incrementCycle();
+			x += +arg;
+			incrementCycle();
 		}
 	}
-	return strengths.reduce((a, b) => a + b, 0);
+
+	return [
+		strengths.reduce((a, b) => a + b, 0),
+		output.slice(0, -2)
+	];
+}
+
+function solveOne(data: string): any {
+	return simulateCRT(data)[0];
 }
 
 
@@ -189,51 +198,14 @@ noop`), 13140);
 })();
 
 
-function solveTwo(data: string): any {
-	let x = 1;
-	let cycle = 1;
-	const strengths: number[] = [];
-	let pixels = [];
-	function incCycle() {
-		const chor = cycle % 40;
-		if (Math.abs(x - chor) < 2){
-			process.stdout.write('█');
-		} else {
-			process.stdout.write('.');
-		}
-		cycle++
-		if (chor === 0) console.log();
-		if (cycle === 20) {
-			strengths.push(cycle * x);
-			return;
-		}
-		let attempt = 20;
-		while (attempt <= cycle) {
-			attempt += 40
-			if (cycle === attempt) {
-				strengths.push(cycle * x);
-				break
-			}
-		}
-	}
-	for (const inst of data.trim().split('\n')) {
-		const [command, ...args] = inst.split(' ');
-		if (command === 'noop') {
-			incCycle()
-		}
-		if (command === 'addx') {
-			incCycle()
-			x += parseInt(args[0]);
-			incCycle()
-		}
-	}
-	return strengths.reduce((a, b) => a + b, 0);
+function solveTwo(data: string) {
+	return simulateCRT(data)[1];
 }
 
 
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
-	console.log(solveTwo(`addx 15
+	assert.deepStrictEqual(solveTwo(`addx 15
 addx -11
 addx 6
 addx -3
@@ -378,6 +350,12 @@ addx -6
 addx -11
 noop
 noop
-noop`));
+noop`),
+		'██  ██  ██  ██  ██  ██  ██  ██  ██  ██  \n' +
+		'███   ███   ███   ███   ███   ███   ███ \n' +
+		'████    ████    ████    ████    ████    \n' +
+		'█████     █████     █████     █████     \n' +
+		'██████      ██████      ██████      ████\n' +
+		'███████       ███████       ███████     ');
 	console.log(solveTwo(data));
 })();
