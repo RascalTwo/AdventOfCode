@@ -2,43 +2,43 @@ const fs = require('fs');
 const assert = require('assert');
 
 
+interface Monkey {
+	items: number[]
+	operation: string;
+	test: number;
+	trueMonkey: number;
+	falseMonkey: number;
+	inspected: number;
+}
 
-function solveOne(data: string): any {
-	const monkeys = data.split('Monkey ').slice(1).map((monkey) => {
-		const index = +monkey.split(':')[0];
-		const startingItems = monkey.split(':')[2].split(',').map((item) => parseInt(item));
-		const operation = monkey.split('new = ')[1].split('\n')[0].trim();
-		const test = parseInt(monkey.split(':')[4].split('divisible by ')[1]);
-		const trueResult = parseInt(monkey.split(':')[5].split('throw to monkey')[1]);
-		const falseResult = parseInt(monkey.split(':')[6].split('throw to monkey')[1]);
-		return {
-			index,
-			startingItems,
-			operation,
-			test,
-			trueResult,
-			falseResult,
-			inspectedCount: 0
-		}
-	})
-	for (let r = 0; r < 20; r++) {
+const parseMonkeys = (data: string): Monkey[] => data.split('Monkey ').slice(1).map((monkey) => ({
+	items: monkey.split(':')[2].split(',').map((item) => parseInt(item)),
+	operation: monkey.split('new = ')[1].split('\n')[0].trim(),
+	test: parseInt(monkey.split(':')[4].split('divisible by ')[1]),
+	trueMonkey: parseInt(monkey.split(':')[5].split('throw to monkey')[1]),
+	falseMonkey: parseInt(monkey.split(':')[6].split('throw to monkey')[1]),
+	inspected: 0
+}));
+
+
+function simulateMonkeys(monkeys: Monkey[], rounds: number, manageFrustration: (frustration: number) => number): any {
+	for (let r = 0; r < rounds; r++) {
 		for (const monkey of monkeys) {
-			while (monkey.startingItems.length) {
-				const item = monkey.startingItems.shift()!;
-				monkey.inspectedCount++;
-				const oldNewWorry = eval(monkey.operation.replace(/old/g, item.toString()));
-				const newWorry = Math.floor(oldNewWorry / 3);
-				if (newWorry % monkey.test === 0) {
-					monkeys[monkey.trueResult].startingItems.push(newWorry);
-				}
-				else {
-					monkeys[monkey.falseResult].startingItems.push(newWorry);
-				}
+			while (monkey.items.length) {
+				monkey.inspected++;
+
+				const newWorry = manageFrustration(eval(monkey.operation.replace(/old/g, monkey.items.shift()!.toString())));
+				const newMonkeyIndex = newWorry % monkey.test === 0 ? monkey.trueMonkey : monkey.falseMonkey;
+				monkeys[newMonkeyIndex].items.push(newWorry);
 			}
 		}
 	}
-	const activeMonkeys = monkeys.sort((a, b) => b.inspectedCount - a.inspectedCount)
-	return activeMonkeys[0].inspectedCount * activeMonkeys[1].inspectedCount;
+	return monkeys.sort((a, b) => b.inspected - a.inspected).slice(0, 2).reduce((a, b) => a * b.inspected, 1)
+}
+
+
+function solveOne(data: string): any {
+	return simulateMonkeys(parseMonkeys(data), 20, (frustration) => Math.floor(frustration / 3));
 }
 
 
@@ -78,47 +78,9 @@ Monkey 3:
 
 
 function solveTwo(data: string): any {
-	const monkeys = data.split('Monkey ').slice(1).map((monkey) => {
-		const index = +monkey.split(':')[0];
-		const startingItems = monkey.split(':')[2].split(',').map((item) => (parseInt(item)));
-		//const operation = monkey.split('new = ')[1].split('\n')[0].trim().replace(/(\d+)/g, 'BigInt($1)');
-		const operation = monkey.split('new = ')[1].split('\n')[0].trim().replace(/(\d+)/g, '$1');
-		const test = (parseInt(monkey.split(':')[4].split('divisible by ')[1]));
-		const trueResult = parseInt(monkey.split(':')[5].split('throw to monkey')[1]);
-		const falseResult = parseInt(monkey.split(':')[6].split('throw to monkey')[1]);
-		return {
-			index,
-			startingItems,
-			operation,
-			test,
-			trueResult,
-			falseResult,
-			inspectedCount: 0
-		}
-	})
-	const mod = monkeys.reduce((a, b) => a * b.test, (1));
-
-	for (let r = 0; r < 10000; r++) {
-		for (const monkey of monkeys) {
-			while (monkey.startingItems.length) {
-				const item = monkey.startingItems.shift()!;
-				monkey.inspectedCount++;
-				const old = item;
-				let val = (0);
-				//console.log(`val = ` + monkey.operation)
-				eval(`val = ` + monkey.operation);
-				const newWorry = val % mod;
-				if (newWorry % monkey.test === (0)) {
-					monkeys[monkey.trueResult].startingItems.push(newWorry);
-				}
-				else {
-					monkeys[monkey.falseResult].startingItems.push(newWorry);
-				}
-			}
-		}
-	}
-	const activeMonkeys = monkeys.sort((a, b) => b.inspectedCount - a.inspectedCount)
-	return activeMonkeys[0].inspectedCount * activeMonkeys[1].inspectedCount;
+	const monkeys = parseMonkeys(data);
+	const mod = monkeys.reduce((a, b) => a * b.test, 1);
+	return simulateMonkeys(monkeys, 10000, (frustration) => frustration % mod);
 }
 
 
