@@ -2,31 +2,30 @@ const fs = require('fs');
 const assert = require('assert');
 
 
-
-function solveOne(data: string): any {
-	let good = [];
-	function compare(a: any, b: any): boolean | undefined {
-		if (typeof a === 'number' && typeof b === 'number') {
-			return a > b ? false : a < b ? true : undefined;
-		} else if (Array.isArray(a) && Array.isArray(b)) {
-			for (let i = 0; i < a.length && i < b.length; i++) {
-				const result = compare(a[i], b[i]);
-				if (result !== undefined) return result;
-			}
-			if (a.length > b.length) return false;
-			if (a.length < b.length) return true;
-			return undefined;
-		}
+function compare(a: any, b: any): boolean | undefined {
+	if (typeof a === 'number' && typeof b === 'number') {
+		return a > b ? false : a < b ? true : undefined;
+	} else if (Array.isArray(a) !== Array.isArray(b)) {
 		return compare(Array.isArray(a) ? a : [a], Array.isArray(b) ? b : [b]);
 	}
 
+	for (let i = 0, end = Math.max(a.length, b.length); i < end; i++) {
+		if (a[i] === undefined) return true;
+		if (b[i] === undefined) return false;
+		const result = compare(a[i], b[i]);
+		if (result !== undefined) return result;
+	}
+	return undefined;
+}
+
+
+function solveOne(data: string): any {
+	let sum = 0;
 	for (const [i, lines] of data.split('\n\n').entries()) {
 		const [one, two] = lines.split('\n').map(raw => JSON.parse(raw));
-		if (compare(one, two)) {
-			good.push(i + 1);
-		}
+		if (compare(one, two)) sum += i + 1;
 	}
-	return good.reduce((a, b) => a + b, 0);
+	return sum;
 }
 
 
@@ -59,33 +58,20 @@ function solveOne(data: string): any {
 })();
 
 
-function solveTwo(data: string): any {
-	function compare(a: any, b: any): boolean | undefined {
-		if (typeof a === 'number' && typeof b === 'number') {
-			return a > b ? false : a < b ? true : undefined;
-		} else if (Array.isArray(a) && Array.isArray(b)) {
-			for (let i = 0; i < a.length && i < b.length; i++) {
-				const result = compare(a[i], b[i]);
-				if (result !== undefined) return result;
-			}
-			if (a.length > b.length) return false;
-			if (a.length < b.length) return true;
-			return undefined;
-		}
-		return compare(Array.isArray(a) ? a : [a], Array.isArray(b) ? b : [b]);
-	}
+function calculateDecoderKey(data: string, ...extraPackets: any): number {
 	const packets = [
-		[[2]],
-		[[6]],
-		...data.trim().split('\n').map(l => l.trim()).filter(Boolean).map(raw => {
-			return JSON.parse(raw)
-		})
+		...extraPackets,
+		...data.trim().split('\n').map(l => l.trim()).filter(Boolean).map(raw => JSON.parse(raw))
 	].sort((a, b) => {
 		const result = compare(a, b);
-		if (result === undefined) return 0;
-		return result ? -1 : 1;
+		return result === undefined ? 0 : result ? -1 : 1;
 	})
-	return (packets.findIndex(p => JSON.stringify(p) === JSON.stringify([[2]])) + 1) * (1 + packets.findIndex(p => JSON.stringify(p) === JSON.stringify([[6]])));
+	return extraPackets.reduce((product: number, packet: any) => product * (1 + packets.findIndex(p => JSON.stringify(p) === JSON.stringify(packet))), 1);
+}
+
+
+function solveTwo(data: string): any {
+	return calculateDecoderKey(data, [[2]], [[6]]);
 }
 
 
