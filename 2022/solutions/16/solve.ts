@@ -2,50 +2,63 @@ const fs = require('fs');
 const assert = require('assert');
 
 
-interface Valve {
-	valveName: string;
-	flowRate: number;
-	tunnelNames: string[];
-}
-
 const parseFlowInfo = (data: string) => {
-	return data.split('\n').map(line => {
+	return data.split('\n').reduce((map, line) => {
 		const [valve, tunnels] = line.split(';');
-		const [valveName, flowRate] = valve.split(' has flow rate=');
-		const tunnelNames = tunnels.split(/ leads? to valves? /ig)[1].split(', ');
-		return {
-			valveName: valveName.split(/\s+/)[1],
+		const [rawValveName, flowRate] = valve.split(' has flow rate=');
+		const valveName = rawValveName.split(/\s+/)[1]
+
+		map.set(valveName, {
 			flowRate: parseInt(flowRate),
-			tunnelNames
-		}
-	}).reduce((obj, valve) => ({ ...obj, [valve.valveName]: valve }), {})
+			tunnelNames: tunnels.split(/ leads? to valves? /ig)[1].split(', ')
+		});
+		return map;
+	}, new Map())
 }
 
-function solveOne(data: string): any {
-	const valves: Record<string, Valve> = parseFlowInfo(data);
-	const cache = new Map();
-	function recur(time: number, human: string, opens: Map<string, number>) {
-		const q = [...opens.entries()].reduce((sum, [key, value]) => sum + (value ? value * valves[key]!.flowRate : 0), 0)
-		if (!time) return q;
+function solve(data: string, partTwo: boolean) {
+	const valves: Map<string, { flowRate: number, tunnelNames: string[] }> = parseFlowInfo(data);
 
-		const key = `${time}-${human}`;
-		if ((cache.get(key) || -1) >= q) return 0;
-		cache.set(key, q);
+	const cache = new Map();
+	const opened = new Map();
+	function recur(time: number, human: string, elephant: string | null) {
+		const flowed = [...opened.entries()].reduce((sum, [key, value]) => sum + (value ? value * valves.get(key)!.flowRate : 0), 0)
+		if (!time) return flowed;
+
+		const key = `${time}-${human}-${elephant}`;
+		if ((cache.get(key) || -Infinity) >= flowed) return 0;
+		cache.set(key, flowed);
 
 		let best = 0;
-		for (const nextHuman of [human, ...valves[human]!.tunnelNames]) {
+		for (const nextHuman of [human, ...valves.get(human)!.tunnelNames]) {
 			if (human === nextHuman) {
-				if (opens.has(human) || !valves[human]!.flowRate) continue
-				opens.set(human, time)
+				if (opened.has(human) || !valves.get(human)!.flowRate) continue
+				opened.set(human, time)
 			}
-			best = Math.max(best, recur(time - 1, nextHuman, opens))
-			// backtrack and un-open
-			if (human === nextHuman) opens.delete(human);
+
+			if (elephant) for (const nextElephant of [elephant, ...valves.get(elephant)!.tunnelNames]) {
+				if (elephant === nextElephant) {
+					if (opened.has(elephant) || !valves.get(elephant)!.flowRate) continue
+					opened.set(elephant, time)
+				}
+
+				best = Math.max(best, recur(time - 1, nextHuman, nextElephant))
+
+				if (elephant === nextElephant) opened.delete(elephant);
+			} else {
+				best = Math.max(best, recur(time - 1, nextHuman, elephant))
+			}
+
+			if (human === nextHuman) opened.delete(human);
 		}
 
 		return best;
 	}
-	return recur(29, 'AA', new Map());
+	return partTwo ? recur(25, 'AA', 'AA') : recur(29, 'AA', null);
+}
+
+function solveOne(data: string): any {
+	return solve(data, false);
 }
 
 
@@ -67,40 +80,7 @@ Valve JJ has flow rate=21; tunnel leads to valve II`), 1649); // off by two, sup
 
 
 function solveTwo(data: string): any {
-	const valves: Record<string, Valve> = parseFlowInfo(data);
-	const cache = new Map();
-	function recur(time: number, human: string, elephant: string, opens: Map<string, number>) {
-		const q = [...opens.entries()].reduce((sum, [key, value]) => sum + (value ? value * valves[key]!.flowRate : 0), 0)
-		if (!time) return q;
-
-		const key = `${time}-${human}-${elephant}`;
-		if ((cache.get(key) || -1) >= q) return 0;
-		cache.set(key, q);
-
-		let best = 0;
-		for (const nextHuman of [human, ...valves[human]!.tunnelNames]) {
-			if (human === nextHuman) {
-				if (opens.has(human) || !valves[human]!.flowRate) continue
-				opens.set(human, time)
-			}
-			for (const nextElephant of [elephant, ...valves[elephant]!.tunnelNames]) {
-				if (elephant === nextElephant) {
-					if (opens.has(elephant) || !valves[elephant]!.flowRate) continue
-					opens.set(elephant, time)
-				}
-				best = Math.max(best, recur(time - 1, nextHuman, nextElephant, opens))
-
-				// backtrack and un-open
-				if (elephant === nextElephant) opens.delete(elephant);
-			}
-
-			// backtrack and un-open
-			if (human === nextHuman) opens.delete(human);
-		}
-
-		return best;
-	}
-	return recur(25, 'AA', 'AA', new Map());
+	return solve(data, true);
 }
 
 
