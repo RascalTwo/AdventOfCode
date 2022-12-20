@@ -1,50 +1,42 @@
 const fs = require('fs');
 const assert = require('assert');
 
-
-function solveOne(data: string): any {
-	let nums = data.split('\n').map((s, i) => ({
-		num: parseInt(s),
-		foundIndex: i,
-	}));
-	const numsByIndex = nums.reduce((acc, n) => {
-		acc[n.foundIndex] = n;
-		return acc;
-	}, {} as any);
-
-	for (let i = 0; i < nums.length; i++) {
-		const numObj = numsByIndex[i];
-		const currentIndex = nums.indexOf(numObj);
-		nums.splice(currentIndex, 1);
-		nums.splice((currentIndex + numObj.num) % nums.length, 0, numObj);
-	}
-
-	let groveCoords = [];
-
-	const zeroIndex = nums.findIndex(n => n.num === 0);
-
-	let i = zeroIndex;
-	for (let n = 0; n < 1000; n++){
-		i++
-		if (i >= nums.length) i = 0;
-	}
-	groveCoords.push(nums[i].num)
-
-	for (let n = 0; n < 1000; n++){
-		i++
-		if (i >= nums.length) i = 0;
-	}
-	groveCoords.push(nums[i].num)
-
-	for (let n = 0; n < 1000; n++){
-		i++
-		if (i >= nums.length) i = 0;
-	}
-	groveCoords.push(nums[i].num)
-	return groveCoords.reduce((acc, n) => acc + n, 0)
+interface FileNumber {
+	value: number;
+	index: number;
 }
 
-// 13884
+const parseNumbers = (data: string, transformValue: (string: string) => number = parseInt): [FileNumber[], Map<number, FileNumber>] => {
+	const map = new Map<number, FileNumber>();
+	const numbers: FileNumber[] = data.split('\n').map((s, index) => {
+		const number = { value: transformValue(s), index };
+		map.set(number.index, number);
+		return number
+	});
+	return [numbers, map];
+}
+
+function mixNumbers(numbers: FileNumber[], map: Map<number, FileNumber>) {
+	for (let i = 0; i < numbers.length; i++) {
+		const fileNumber = map.get(i)!;
+		const currentIndex = numbers.indexOf(fileNumber);
+		numbers.splice(currentIndex, 1);
+		numbers.splice((currentIndex + fileNumber.value) % numbers.length, 0, fileNumber);
+	}
+	return numbers;
+}
+
+function sumGroveCoordinates(numbers: FileNumber[]) {
+	const zeroIndex = numbers.findIndex(n => n.value === 0);
+	return [1000, 2000, 3000].reduce((sum, io) => sum + numbers[(zeroIndex + io) % numbers.length].value, 0);
+}
+
+
+function solveOne(data: string): any {
+	return sumGroveCoordinates(mixNumbers(...parseNumbers(data)));
+}
+
+
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
 	assert.deepStrictEqual(solveOne(`1
@@ -59,47 +51,10 @@ function solveOne(data: string): any {
 
 
 function solveTwo(data: string): any {
-	let nums = data.split('\n').map((s, i) => ({
-		num: parseInt(s) * 811589153,
-		foundIndex: i,
-	}));
-	const numsByIndex = nums.reduce((acc, n) => {
-		acc[n.foundIndex] = n;
-		return acc;
-	}, {} as any);
-
-	for (let m = 0; m < 10; m++){
-		for (let i = 0; i < nums.length; i++) {
-			const numObj = numsByIndex[i];
-			const currentIndex = nums.indexOf(numObj);
-			nums.splice(currentIndex, 1);
-			nums.splice((currentIndex + numObj.num) % nums.length, 0, numObj);
-		}
-	}
-
-	let groveCoords = [];
-
-	const zeroIndex = nums.findIndex(n => n.num === 0);
-
-	let i = zeroIndex;
-	for (let n = 0; n < 1000; n++){
-		i++
-		if (i >= nums.length) i = 0;
-	}
-	groveCoords.push(nums[i].num)
-
-	for (let n = 0; n < 1000; n++){
-		i++
-		if (i >= nums.length) i = 0;
-	}
-	groveCoords.push(nums[i].num)
-
-	for (let n = 0; n < 1000; n++){
-		i++
-		if (i >= nums.length) i = 0;
-	}
-	groveCoords.push(nums[i].num)
-	return groveCoords.reduce((acc, n) => acc + n, 0)
+	const [numbers, map] = parseNumbers(data, s => parseInt(s) * 811589153);
+	return sumGroveCoordinates(
+		Array.from({ length: 10 }).reduce<FileNumber[]>(lastNumbers => mixNumbers(lastNumbers, map), numbers)
+	);
 }
 
 
