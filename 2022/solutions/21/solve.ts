@@ -1,41 +1,64 @@
 const fs = require('fs');
 const assert = require('assert');
 
+type Operation = '+' | '-' | '*' | '/' | '===';
+interface Equation {
+	a: string;
+	op: Operation;
+	b: string;
+}
 
-
-function solveOne(data: string): any {
-	const register = new Map<string, number | { a: string, op: string, b: string }>();
+const generateRegister = (data: string) => {
+	const register = new Map<string, number | boolean | Equation>();
 	for (const line of data.split('\n')) {
-		const key = line.split(': ')[0];
-		const value = line.split(': ')[1];
-		if (!isNaN(parseInt(value))) register.set(key, parseInt(value));
-		else {
-			const [a, op, b] = value.split(/ ([+-/*]) /);
-			register.set(key, { a, op, b });
+		const [key, value] = line.split(': ');
+		const parts = value.split(' ');
+		if (parts.length === 1) {
+			register.set(key, parseInt(value));
+		} else {
+			const [a, op, b] = parts;
+			register.set(key, { a, op: op as Operation, b });
 		}
 	}
+	return register;
+}
+
+function evaluateRegister(register: Map<string, number | boolean | Equation>, humnDependents: Set<string> = new Set(), variables: Record<string, string> = {}): { value: number | boolean, expression: string } {
+	let expression = 'root';
 	const stack = ['root']
 	while (stack.length) {
 		const next = stack.at(-1)!;
-		const value = register.get(next);
-		if (typeof value === 'number') {
+		const value = register.get(next)!;
+		if (typeof value !== 'object') {
+			for (const [name, value] of register.entries()) {
+				if (typeof value !== 'object') expression = expression.replace(name, variables[name] || value.toString())
+			}
 			stack.pop();
-			if (next === 'root') return value;
+			if (next === 'root') {
+				return { value, expression: expression.slice(1, -1).replace('===', '=') };
+			}
 			continue;
 		}
-		// @ts-ignore
+		expression = expression.replace(next, `(${value.a} ${value.op} ${value.b})`);
+
 		const { a, op, b } = value;
-		if (typeof register.get(a) === 'number' && typeof register.get(b) === 'number') {
-			register
-				.set(next, eval(`${register.get(a)} ${op} ${register.get(b)}`))
+
+		if (humnDependents.has(a) || humnDependents.has(b)) humnDependents.add(next);
+
+		const aValue = register.get(a);
+		const bValue = register.get(b);
+		if (typeof aValue === 'number' && typeof bValue === 'number') {
+			register.set(next, eval(`${aValue} ${op} ${bValue}`)); // todo - don't eval
 		}
-		if (typeof register.get(a) !== 'number') {
-			stack.push(a);
-		}
-		if (typeof register.get(b) !== 'number') {
-			stack.push(b);
-		}
+		if (typeof aValue !== 'number') stack.push(a);
+		if (typeof bValue !== 'number') stack.push(b);
 	}
+
+	return { value: NaN, expression: '' };
+}
+
+function solveOne(data: string): any {
+	return evaluateRegister(generateRegister(data)).value;
 }
 
 
@@ -61,112 +84,27 @@ hmdt: 32`), 152);
 
 
 function solveTwo(data: string): any {
-	const register = new Map<string, number | { a: string, op: string, b: string }>();
-	for (const line of data.split('\n')) {
-		const key = line.split(': ')[0];
-		const value = line.split(': ')[1];
-		if (!isNaN(parseInt(value))) register.set(key, parseInt(value));
-		else {
-			let [a, op, b] = value.split(/ ([+-/*]) /);
-			if (key === 'root') op = '==='
-			register.set(key, { a, op, b });
-		}
-	}
-	const humnDependant = new Set(['humn']);
-	function doTheThing(register: Map<string, number | { a: string, op: string, b: string }>) {
-		const stack = ['root']
-		while (stack.length) {
-			const next = stack.at(-1)!;
-			const value = register.get(next);
-			if (typeof value !== 'object') {
-				stack.pop();
-				if (next === 'root') {
-					return value;
-				}
-				continue;
-			}
-			// @ts-ignore
-			const { a, op, b } = value;
-			if (a === 'humn' || b === 'humn') {
-				humnDependant.add(next);
-			} else {
-				const isA = humnDependant.has(a);
-				const isB = humnDependant.has(b);
-				if (isA || isB) humnDependant.add(next);
-			}
-			if (typeof register.get(a) === 'number' && typeof register.get(b) === 'number') {
-				register
-					.set(next, eval(`${register.get(a)} ${op} ${register.get(b)}`))
-			}
-			if (typeof register.get(a) !== 'number') {
-				stack.push(a);
-			}
-			if (typeof register.get(b) !== 'number') {
-				stack.push(b);
-			}
-		}
-	}
+	const register = generateRegister(data);
 
-	function convertToExpression(register: Map<string, number | { a: string, op: string, b: string }>) {
-		let expression = 'root';
-		const stack = ['root']
-		while (stack.length) {
-			const next = stack.at(-1)!;
-			const value = register.get(next)!;
-			if (typeof value !== 'object') {
-				expression = expression.replace(next, value.toString());
-				for (const [name, v] of register.entries()){
-					if (typeof v === 'number') expression = expression.replace(name, name === 'humn' ? 'X' : v.toString())
-				}
-				stack.pop();
-				if (next === 'root') {
-					return expression
-				}
-				continue;
-			}
-			expression = expression.replace(next, `(${value.a} ${value.op} ${value.b})`);
-			// @ts-ignore
-			const { a, op, b } = value;
-			if (typeof register.get(a) === 'number' && typeof register.get(b) === 'number') {
-				//if (next === 'root') console.log(register.get(a), register.get(b));
-				//if (value.a === 'ljgn') console.log(expression)
-				//expression = expression.replace(`(${value.a} ${value.op} \(\))`, `${register.get(a)} ${op} ${register.get(b)}`);
-				//if (value.a === 'ljgn') console.log(expression)
-				register
-					.set(next, eval(`${register.get(a)} ${op} ${register.get(b)}`))
-			}
-			if (typeof register.get(a) !== 'number') {
-				//console.log(a)
-				expression = expression.replace(a, `(${a})`);
-				stack.push(a);
-			}
-			if (typeof register.get(b) !== 'number') {
-				//console.log(expression)
-				expression = expression.replace(b, `(${b})`);
-				//console.log(expression)
-				stack.push(b);
-			}
-		}
+	(register.get('root')! as Equation).op = '===';
 
-	}
+	const humnDependents = new Set(['humn']);
 
-	for (let humn = -1000; humn < 1000; humn++) {
+	let result;
+	for (let humn = 300; humn < 302; humn++) {
 		const newRegister = new Map(register);
 		newRegister.set('humn', humn);
-		const isCachingNonHumanDependants = humnDependant.size === 1;
-		const result = doTheThing(newRegister);
-		if (isCachingNonHumanDependants) {
-			for (const [key, value] of newRegister) {
-				if (!humnDependant.has(key)) register.set(key, value);
-			}
+
+		const isCachingNonHumanDependents = humnDependents.size === 1;
+
+		result = evaluateRegister(newRegister, humnDependents, { humn: 'X' });
+		if (isCachingNonHumanDependents) for (const [key, value] of newRegister) {
+			if (!humnDependents.has(key)) register.set(key, value);
 		}
-		const newNewRegister = new Map(register);
-		newRegister.set('humn', humn);
-		console.log(convertToExpression(newNewRegister))
-		if (result) return humn;
+		if (result.value) return humn;
 	}
-	console.log('could not find a solution');
-	return 0;
+
+	return result?.expression;
 }
 
 
@@ -188,4 +126,5 @@ lgvd: ljgn * ptdq
 drzm: hmdt - zczc
 hmdt: 32`), 301);
 	console.log(solveTwo(data));
+	// Paste expression into site such as: https://www.dcode.fr/equation-solver
 })();
