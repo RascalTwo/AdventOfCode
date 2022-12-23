@@ -57,11 +57,11 @@ function solveOne(data: string): any {
 			}
 			lines.push(line);
 		}
-		setTimeout(() => {
+		/*setTimeout(() => {
 			console.clear();
 			// @ts-ignore
 			console.log(lines.join('\n'));
-		}, 1000 * vi++);
+		}, 1000 * vi++);*/
 	}
 
 	function findEdgeFrom(r: number, c: number, dir: keyof typeof directionToVector): '.' | '#' | undefined {
@@ -205,10 +205,10 @@ function solveTwo(data: string): any {
 			lines.push(line);
 		}
 		//setTimeout(() => {
-			//console.clear();
-			console.log('\n\n')
-			// @ts-ignore
-			console.log(lines.join('\n'));
+		//console.clear();
+		//console.log('\n\n')
+		// @ts-ignore
+		//console.log(lines.join('\n'));
 		//}, 1000 * vi++);
 	}
 
@@ -236,220 +236,71 @@ function solveTwo(data: string): any {
 		let [ar, ac] = [r + dr, c + dc];
 		switch (dir) {
 			case 'U':
-				if (ar === 0) {
-					// 1 top to 2 top inverted
-					//ac = ac - 4 - 4
-					ar = ar + 4
-					ar++
-					if (ac === 9) ac = 4
-					if (ac === 10) ac = 3
-					if (ac === 11) ac = 2
-					if (ac === 12) ac = 1
-					dir = 'D'
-				}
-				if (ar === 4) {
-					if (ac >= 1 && ac <= 4) {
-						// 2 top to 1 top inverted
-						//ac = ac + 4 + 4
-						ar = ar - 4
-						ar++
-
-						if (ac === 1) ac = 12
-						if (ac === 2) ac = 11
-						if (ac === 3) ac = 10
-						if (ac === 4) ac = 9
-						dir = 'D'
-					} else {
-						// 3 top to 1 left
-						if (ac === 5) {
-							ac = ac + 4
-							ar = ar - 3
-						}
-						if (ac === 6) {
-							ac = ac + 3
-							ar = ar - 2
-						}
-						if (ac === 7) {
-							ac = ac + 2
-							ar = ar - 1
-						}
-						if (ac === 8) {
-							ac = ac + 1
-						}
-						dir = 'R'
-					}
-				}
-				if (ar === 8) {
-					// 6 top to 4 right
-					if (ac === 16) {
-						ac = ac - 4
-						ar = ar - 3
-					}
-					if (ac === 15) {
-						ac = ac - 3
-						ar = ar - 2
-					}
-					if (ac === 14) {
-						ac = ac - 2
-						ar = ar - 1
-					}
-					if (ac === 13) {
-						ac = ac - 1
-					}
-					dir = 'L'
+				if (c <= 50) {
+					dir = 'R';
+					ar = c + 50;
+					ac = 51;
+				} else if (c <= 100) {
+					dir = 'R';
+					ar = c + 100;
+					ac = 1;
+				} else {
+					dir = 'U';
+					ar = 200;
+					ac = c - 100;
 				}
 				break;
 			case 'D':
-				if (ar === 9) {
-					if (ac >= 1 && ac <= 4) {
-						// 2 bottom to 5 bottom
-						ar = ar + 4;
-						//ac = ac + 4 + 4
-						if (ac === 1) ac = 12
-						if (ac === 2) ac = 11
-						if (ac === 3) ac = 10
-						if (ac === 4) ac = 9
-						dir = 'U'
-					} else {
-						// 3 bottom to 5 left
-						if (ac === 5) {
-							ac = ac + 4
-							ar = ar + 3
-						}
-						if (ac === 6) {
-							ac = ac + 3
-							ar = ar + 2
-						}
-						if (ac === 7) {
-							ac = ac + 2
-							ar = ar + 1
-						}
-						if (ac === 8) {
-							ac = ac + 1
-						}
-						dir = 'R'
-					}
+				if (c <= 50) {
+					dir = 'D';
+					ar = 1;
+					ac = c + 100;
+				} else if (c <= 100) {
+					dir = 'L';
+					ar = c + 100;
+					ac = 50;
 				} else {
-					if (ac >= 9 && ac <= 12) {
-						// 5 bottom to 2 bottom
-						ar = ar - 5
-						//ac = ac - 4 - 4
-						if (ac === 9) ac = 4
-						if (ac === 10) ac = 3
-						if (ac === 11) ac = 2
-						if (ac === 12) ac = 1
-						dir = 'U'
-					} else {
-						// 6 bottom to 2 left
-						ac = 1
-						if (ac === 16) {
-							ar = 5
-						}
-						if (ac === 15) {
-							ar = 6
-						}
-						if (ac === 14) {
-							ar = 7
-						}
-						if (ac === 13) {
-							ar = 8
-						}
-						dir = 'R'
-					}
+					dir = 'L';
+					ar = c - 50;
+					ac = 100;
 				}
 				break;
 			case 'L':
-				if (ac === 0) {
-					// 2 left to 6 bottom
-					ar = 12
-					if (ar === 5){
-						ac = 16
-					}
-					if (ar === 6){
-						ac = 15
-					}
-					if (ar === 7){
-						ac = 14
-					}
-					if (ar === 8){
-						ac = 13
-					}
-					dir = 'U'
+				if (r <= 50) {
+					dir = 'R';
+					ar = 151 - r;
+					ac = 1;
+				} else if (r <= 100) {
+					dir = 'D';
+					ar = 101;
+					ac = r - 50;
+				} else if (r <= 150) {
+					dir = 'R';
+					ar = 151 - r;
+					ac = 51;
 				} else {
-					if (ar >= 1 && ar <= 4){
-						// 1 left to 3 top
-						if (ar === 1) {
-							ar = ar + 4
-							ac = ac - 3
-						}
-						if (ar === 2) {
-							ar = ar + 3
-							ac = ac - 2
-						}
-						if (ar === 3) {
-							ar = ar + 2
-							ac = ac - 1
-						}
-						if (ar === 4) {
-							ar = ar + 1
-						}
-						dir = 'D'
-					} else {
-						// 5 left to 3 bottom
-						if (ar === 12) {
-							ar = ar - 4
-							ac = ac - 3
-						}
-						if (ar === 11) {
-							ar = ar - 3
-							ac = ac - 2
-						}
-						if (ar === 10) {
-							ar = ar - 2
-							ac = ac - 1
-						}
-						if (ar === 9) {
-							ar = ar - 1
-						}
-						dir = 'U'
-					}
+					dir = 'D';
+					ar = 1;
+					ac = r - 100;
 				}
 				break;
 			case 'R':
-				if (ac === 17) {
-					// 6 right to 1 right
-					ac = ac - 5
-					if (ar === 9) ar = 4
-					if (ar === 10) ar = 3
-					if (ar === 11) ar = 2
-					if (ar === 12) ar = 1
+				if (r <= 50) {
 					dir = 'L'
-				} else if (ar >= 1 && ar <= 4) {
-					// 1 right to 6 right
-					ac = ac + 3
-					if (ar === 1) ar = 12
-					if (ar === 2) ar = 11
-					if (ar === 3) ar = 10
-					if (ar === 4) ar = 9
+					ar = 151 - r
+					ac = 100;
+				} else if (r <= 100) {
+					dir = 'U'
+					ar = 50;
+					ac = 50 + r;
+				} else if (r <= 150) {
 					dir = 'L'
+					ar = 151 - r;
+					ac = 150
 				} else {
-					// 4 right to 6 top
-					if (ar === 5) {
-						ar = ar + 4
-						ac = ac + 3
-					}
-					if (ar === 6) {
-						ar = ar + 3
-						ac = ac + 2
-					}
-					if (ar === 7) {
-						ar = ar + 2
-						ac = ac + 1
-					}
-					if (ar === 8) {
-						ar = ar + 1
-					}
-					dir = 'D'
+					dir = 'U'
+					ar = 150
+					ac = r - 100
 				}
 				break;
 		}
@@ -497,6 +348,7 @@ function solveTwo(data: string): any {
 	for (let i = 0; i < rawMoves.length; i++) {
 		const char = rawMoves[i];
 		if (char === 'R' || char === 'L') {
+			console.log((i / rawMoves.length) * 100)
 			makeMove(parseInt(digits, 10));
 			digits = '';
 			if (char === 'L') {
@@ -519,26 +371,26 @@ function solveTwo(data: string): any {
 		'L': 2,
 		'R': 0,
 	}
-	console.log(current)
+
 	return 1000 * current[0] + (4 * current[1]) + directionToScore[current[2]];
 }
 
 
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
-	assert.deepStrictEqual(solveTwo(`        ...#
-        .#..
-        #...
-        ....
+	/*assert.deepStrictEqual(solveTwo(`        ...#
+				.#..
+				#...
+				....
 ...#.......#
 ........#...
 ..#....#....
 ..........#.
-        ...#....
-        .....#..
-        .#......
-        ......#.
+				...#....
+				.....#..
+				.#......
+				......#.
 
-10R5L5R10L4R5L5`), 5031);
-	//console.log(solveTwo(data));
+10R5L5R10L4R5L5`), 5031);*/
+	console.log(solveTwo(data));
 })();
