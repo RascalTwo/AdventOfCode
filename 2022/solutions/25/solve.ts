@@ -2,7 +2,7 @@ const fs = require('fs');
 const assert = require('assert');
 
 
-const charToDigit = {
+const charToDigit: Record<string, number> = {
 	2: 2,
 	1: 1,
 	0: 0,
@@ -12,10 +12,7 @@ const charToDigit = {
 
 function snafuToDecimal(string: string): number {
 	let result = 0;
-	for (const char of string) {
-		// @ts-ignore
-		result = result * 5 + charToDigit[char]!;
-	}
+	for (const char of string) result = result * 5 + charToDigit[char]!;
 	return result;
 }
 
@@ -23,22 +20,20 @@ function decimalToSnafu(number: number): string {
 	let result = '';
 	while (number > 0) {
 		const digit = number % 5;
-		if (digit === 0) {
-			result = '0' + result;
-		}
-		if (digit === 1) {
-			result = '1' + result;
-		}
-		if (digit === 2) {
-			result = '2' + result;
-		}
-		if (digit === 3) {
-			number += 2
-			result = `=` + result;
-		}
-		if (digit === 4) {
-			number++
-			result = `-` + result;
+		switch(digit){
+			case 0:
+			case 1:
+			case 2:
+				result = digit + result;
+				break;
+			case 3:
+				number += 2
+				result = `=` + result;
+				break;
+			case 4:
+				number++
+				result = `-` + result;
+				break;
 		}
 		number = Math.floor(number / 5);
 	}
@@ -46,10 +41,7 @@ function decimalToSnafu(number: number): string {
 }
 
 function solveOne(data: string): any{
-	const digits = data.split('\n').map(snafuToDecimal);
-
-	const sum = digits.reduce((a, b) => a + b, 0);
-	return decimalToSnafu(sum);
+	return decimalToSnafu(data.split('\n').reduce((a, b) => a + snafuToDecimal(b), 0));
 }
 
 
@@ -100,16 +92,4 @@ function solveOne(data: string): any{
 1=
 122`), '2=-1=0');
 	console.log(solveOne(data));
-})();
-
-
-function solveTwo(data: string): any{
-	return true;
-}
-
-
-(() => {
-	const data = fs.readFileSync(__dirname + '/input.in').toString();
-	assert.deepStrictEqual(solveTwo(``), true);
-	console.log(solveTwo(data));
 })();
