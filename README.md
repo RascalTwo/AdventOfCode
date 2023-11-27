@@ -25,3 +25,9 @@ Here is my code for Advent of Code
 
   https://user-images.githubusercontent.com/9403665/206322850-f0fa8c6c-fe15-4528-a3ee-e59baa33a7ef.mp4
 </details>
+
+<details>
+  <summary>Day #03 (Terminal)</summary>
+
+  https://github.com/RascalTwo/AdventOfCode/assets/9403665/7361c923-4aa9-4547-95cd-889abb36410e
+</details>
