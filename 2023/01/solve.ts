@@ -1,14 +1,48 @@
+// @ts-ignore
 const fs = require('fs');
+// @ts-ignore
 const assert = require('assert');
+
+const DIGITS = Object.fromEntries([...[...'0123456789'].entries()])
+const DIGITS_AND_NAMED_NUMBERS = {
+	...DIGITS,
+	zero: '0',
+	one: '1',
+	two: '2',
+	three: '3',
+	four: '4',
+	five: '5',
+	six: '6',
+	seven: '7',
+	eight: '8',
+	nine: '9'
+}
+
+const findFirst = <T>(string: string, patterns: Record<string, T>, forward: boolean): T => {
+	const start = forward ? 0 : string.length - 1;
+	const end = forward ? string.length : -1;
+	const change = forward ? 1 : -1;
+
+	for (let i = start; i !== end; i += change){
+		for (const pattern in patterns) {
+			if (string.slice(i, i + pattern.length) === pattern) {
+				return patterns[pattern];
+			}
+		}
+	}
+
+	throw new Error('Not found');
+}
+
+function solve(data: string, validNumbers: Record<string, string>) {
+	return data.trim().split('\n')
+		.map(line => Number(findFirst(line, validNumbers, true) + findFirst(line, validNumbers, false)))
+		.reduce((a, b) => a + b, 0)
+}
 
 
 function solveOne(data: string): any {
-	const nums = data.trim().split('\n').map(line => {
-		const first= line.split('').find(c => c >= '0' && c <= '9')!
-		const last = line.split('').reverse().find(c => c >= '0' && c <= '9')!
-		return Number(first + last);
-	})
-	return nums.reduce((a, b) => a + b, 0);
+	return solve(data, DIGITS)
 }
 
 
@@ -21,51 +55,9 @@ treb7uchet`), 142);
 	console.log(solveOne(data));
 })();
 
-const wordNums = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
-
-const getFirstNum = (str: string) => {
-	let bestIndex = -1;
-	let found: string | number = ''
-	for (const possible of [...'0123456789'.split(''), 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']) {
-		const index = str.indexOf(possible)
-		if (bestIndex === -1 && index !== -1) {
-			bestIndex = index
-			found = possible
-		}
-		if (index !== -1 && index < bestIndex) {
-			bestIndex = index
-			found = possible
-		}
-	}
-	if (found.length) found = wordNums.indexOf(found);
-	return +found
-}
-
-const parseNumsFrom = (string: string) => {
-	const num = [];
-	for (let i = 0; i < string.length; i++){
-		for (const possible of [...'0123456789'.split(''), 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']) {
-			if (string.slice(i).startsWith(possible)) {
-				if (possible.length > 1) {
-					num.push(wordNums.indexOf(possible));
-				} else {
-					num.push(+possible)
-				}
-			}
-		}
-	}
-	return num;
-}
-
 
 function solveTwo(data: string): any{
-	const nums = data.trim().split('\n').map(line => {
-		//const first= getFirstNum(line)
-		//const last = getFirstNum(line.split('').reverse().join())
-		const nums = parseNumsFrom(line);
-		return Number(nums[0] + '' + nums.at(-1));
-	})
-	return nums.reduce((a, b) => a + b, 0);
+	return solve(data, DIGITS_AND_NAMED_NUMBERS)
 }
 
 
