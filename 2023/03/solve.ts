@@ -3,59 +3,64 @@ const fs = require('fs');
 // @ts-ignore
 const assert = require('assert');
 
+type PartNumber = Record<'r' | 'c' | 'value', number>;
 
-function solveOne(data: string): any {
+
+const coordsToInt = (x: number, y: number, maxX: number) => x * maxX + y
+
+const collectWholeNumber = (world: string[][], r: number, startCol: number) => {
+	let partNumber = '';
+
+	let c = startCol;
+	while (/\d/.test(world[r][c])) {
+		partNumber += world[r][c]
+		c--;
+	}
+	c++;
+	const wholeNumberStartCol = c;
+
+	c += partNumber.length
+	partNumber = [...partNumber].reverse().join('')
+	while (/\d/.test(world[r][c])) {
+		partNumber += world[r][c]
+		c++;
+	}
+	return { r, c: wholeNumberStartCol, value: +partNumber }
+}
+
+
+const collectPartNumbers = (data: string, symbols: string) => {
 	const world = data.trim().split('\n').map(line => line.split(''));
 
-	const digitsFound = [];
-	for (let r = 0; r < world.length; r++) {
-		const row = world[r];
-		for (let c = 0; c < row.length; c++) {
-			const char = row[c];
-			if (char !== '.' && !/\d/.test(char)) {
-				const neighbors = [];
-				for (const ro of [-1, 0, 1]) {
-					const nr = r + ro;
-					for (const co of [-1, 0, 1]) {
-						if (!ro && !co) continue
-						const nc = c + co;
-						const newChar = world[nr]?.[nc];
-						if (newChar === undefined || !/\d/.test(newChar)) continue;
-						digitsFound.push({ r: nr, c: nc });
-					}
+	const symbolPartNumbers = new Map<number, PartNumber[]>()
+	for (const [r, row] of world.entries()) {
+		for (const [c, char] of row.entries()) {
+			if (!symbols.includes(char)) continue;
+
+			const foundPartNumbers = new Map<number, PartNumber>();
+			for (const newRow of [-1, 0, 1].map(o => r + o)) {
+				for (const newCol of [-1, 0, 1].map(o => c + o)) {
+					if (r === newRow && c === newCol) continue
+
+					const newChar = world[newRow]?.[newCol];
+					if (newChar < '0' || newChar > '9') continue;
+
+					const partNumber = collectWholeNumber(world, newRow, newCol)
+					foundPartNumbers.set(coordsToInt(partNumber.r, partNumber.c, world.length), partNumber);
 				}
 			}
+			if (foundPartNumbers.size) symbolPartNumbers.set(coordsToInt(r, c, world.length), [...foundPartNumbers.values()]);
 		}
 	}
 
+	return [...symbolPartNumbers.values()]
+}
 
-	// @ts-ignore
-	const wholeNumbers = []
-	for (const { r, c } of digitsFound) {
-		// traverse to left of each as far as possible, store in new arr, remove dupes from arr
-		let cc = c;
-		while (/\d/.test(world[r][cc]) && cc > 0) {
-			cc--;
-		}
-		if (/\d/.test(world[r][cc])) {
-			cc--;
-		}
 
-		cc++;
-		const startC = cc
-		let digits = [];
-		while (/\d/.test(world[r][cc])) {
-			digits.push(world[r][cc])
-			cc++;
-		}
-		const num = +digits.join('')
-		wholeNumbers.push({ r, c: startC, value: num });
-	}
-
-	// @ts-ignore
-	const uniqueWholeNumbers = wholeNumbers.filter((wn, wni) => wholeNumbers.findIndex(ln => JSON.stringify(ln) === JSON.stringify(wn)) === wni)
-	// @ts-ignore
-	return uniqueWholeNumbers.reduce((a, b) => a + b.value, 0)
+function solveOne(data: string): any {
+	return collectPartNumbers(data, '*/=+%@#&-$')
+		.flatMap(partNumbers => partNumbers.map(partNumber => partNumber.value))
+		.reduce((a, b) => a + b, 0)
 }
 
 
@@ -76,69 +81,8 @@ function solveOne(data: string): any {
 
 
 function solveTwo(data: string): any {
-	const world = data.trim().split('\n').map(line => line.split(''));
-
-	const digitsFound = [];
-	for (let r = 0; r < world.length; r++) {
-		const row = world[r];
-		for (let c = 0; c < row.length; c++) {
-			const char = row[c];
-			if (char !== '.' && !/\d/.test(char)) {
-				for (const ro of [-1, 0, 1]) {
-					const nr = r + ro;
-					for (const co of [-1, 0, 1]) {
-						if (!ro && !co) continue
-						const nc = c + co;
-						const newChar = world[nr]?.[nc];
-						if (newChar === undefined || !/\d/.test(newChar)) continue;
-						digitsFound.push({ r: nr, c: nc, sym: { r, c } });
-					}
-				}
-			}
-		}
-	}
-
-
-	// @ts-ignore
-	const wholeNumbers = []
-	for (const { r, c, sym } of digitsFound) {
-		// traverse to left of each as far as possible, store in new arr, remove dupes from arr
-		let cc = c;
-		while (/\d/.test(world[r][cc]) && cc > 0) {
-			cc--;
-		}
-		if (/\d/.test(world[r][cc])) {
-			cc--;
-		}
-
-		cc++;
-		const startC = cc
-		let digits = [];
-		while (/\d/.test(world[r][cc])) {
-			digits.push(world[r][cc])
-			cc++;
-		}
-		const num = +digits.join('')
-		wholeNumbers.push({ r, c: startC, value: num, sym });
-	}
-
-
-	// @ts-ignore
-	const uniqueWholeNumbers = wholeNumbers.filter((wn, wni) => wholeNumbers.findIndex(ln => JSON.stringify(ln) === JSON.stringify(wn)) === wni)
-	// @ts-ignore
-	const symbolsToWholeNums = {};
-
-	for (const bla of uniqueWholeNumbers) {
-		const skey = JSON.stringify(bla.sym)
-		// @ts-ignore
-		if (!(skey in symbolsToWholeNums)) symbolsToWholeNums[skey] = [];
-		// @ts-ignore
-		symbolsToWholeNums[skey].push(bla);
-	}
-	// @ts-ignore
-	const symbolsWithAtLeastTwo = Object.entries(symbolsToWholeNums).filter(([skey, things]) => things.length >= 2);
-	// @ts-ignore
-	return symbolsWithAtLeastTwo.reduce((a, b) => a + b[1].reduce((a, b) => a * b.value, 1), 0)
+	return collectPartNumbers(data, '*')
+		.reduce((a, b) => a + (b.length == 2 ? b.reduce((a, b) => a * b.value, 1) : 0), 0)
 }
 
 
