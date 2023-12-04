@@ -4,22 +4,24 @@ const fs = require('fs');
 const assert = require('assert');
 
 
+const winningNumbersToScore = (winningNumbers: number) => {
+	let score = +!!winningNumbers
+	for (let i = 1; i < winningNumbers; i++) score *= 2;
+	return score;
+}
+
+const parseCards = (data: string) => data.trim().split('\n').map(line => {
+	const id = +line.split(/\s+/)[1].split(':')[0];
+	const [winningNumbersArray, numbersHad] = line.split(': ')[1].split('|')
+		.map(group => group.trim().split(/\s+/).map(Number));
+	const winningNumbers = new Set(winningNumbersArray);
+
+	return { id, numbersWon: numbersHad.reduce((a, b) => a + +winningNumbers.has(b), 0) }
+});
+
 function solveOne(data: string): any {
-	const cards = data.trim().split('\n').map(line => {
-		const id = +line.split(/\s+/)[1].split(':')[0];
-		const numberGroups = line.split(': ')[1].split('|').map(group => group.trim().split(/\s+/).map(Number))
-		const winningNumbers = numberGroups[0];
-		const havingNumbers = numberGroups[1];
-		const winningNumbersHad = havingNumbers.filter(n => winningNumbers.includes(n));
-		let score = 0;
-		if (winningNumbersHad.length) score++;
-		for (let i = 1; i < winningNumbersHad.length; i++) score *= 2;
-
-		return { id, numberGroups, winningNumbers, havingNumbers, winningNumbersHad, score }
-	});
-
-
-	return cards.reduce((a, b) => a + b.score, 0)
+	return parseCards(data)
+		.reduce((a, b) => a + winningNumbersToScore(b.numbersWon), 0)
 }
 
 
@@ -37,40 +39,12 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11`), 13);
 
 
 function solveTwo(data: string): any {
-	const cards = data.trim().split('\n').map(line => {
-		const id = +line.split(/\s+/)[1].split(':')[0];
-		const numberGroups = line.split(': ')[1].split('|').map(group => group.trim().split(/\s+/).map(Number))
-		const winningNumbers = numberGroups[0];
-		const havingNumbers = numberGroups[1];
-		const winningNumbersHad = havingNumbers.filter(n => winningNumbers.includes(n));
-		let score = 0;
-		if (winningNumbersHad.length) score++;
-		for (let i = 1; i < winningNumbersHad.length; i++) score *= 2;
+	const cards = parseCards(data);
 
-		return { id, numberGroups, winningNumbers, havingNumbers, winningNumbersHad, score, processed: false }
-	});
-	const cardsByIds = cards.reduce((a, b) => {
-		a[b.id] = b
-		return a
-	}, {} as any);
-	const counts = cards.reduce((a, b) => {
-		a[b.id] = 1
-		return a
-	}, {} as Record<number, number>);
-	while (true) {
-		let total = cards.length
-		for (let c = 0; c < cards.length; c++) {
-			const card = cards[c]
-			if (card.processed) continue;
-			for (let i = card.id + 1; i <= card.id + card.winningNumbersHad.length; i++) {
-				//cards.push({ ...cardsByIds[i] })
-				//cards.sort((a, b) => a.id - b.id)
-				counts[i] += counts[card.id]
-			}
-			card.processed = true
-		}
-		if (cards.length === total) break
-	}
+	const counts = cards.reduce((a, b) => ({ ...a, [b.id]: 1 }), {} as Record<number, number>);
+	for (const card of cards)
+		for (let i = card.id + 1; i <= card.id + card.numbersWon; i++)
+			counts[i] += counts[card.id]
 
 	return Object.values(counts).reduce((a, b) => a + b, 0)
 }
