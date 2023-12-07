@@ -3,86 +3,95 @@ const fs = require('fs');
 // @ts-ignore
 const assert = require('assert');
 
-const toBestHand = (hand: string): [string, number] => {
-	if (!hand.includes('J')) return handToType(hand);
-	let bestType = ['', Number.MIN_SAFE_INTEGER] as [string, number]
-	const pool = [hand];
-	while (pool.length) {
-		const hand = pool.pop()!
-		for (const char of strengths2.slice(0, -1)) {
-			const newHand = hand.replace('J', char);
-			if (newHand.includes('J')) pool.push(newHand)
-			else {
-				const type = handToType(newHand)
-				if (type[1] > bestType[1]) bestType = type
-			}
-		}
-	}
-	return bestType
-}
-
-const handToType = (hand: string): [string, number] => {
-	const chars = [...hand].sort();
+const orderStringByFrequency = (string: string) => {
+	const chars = [...string]
 	const counts = chars.reduce((counts, char) => {
 		if (!(char in counts)) counts[char] = 0;
 		counts[char]++;
 		return counts;
 	}, {} as Record<string, number>)
-	const orderedHand = chars.sort((a, b) => counts[b] - counts[a]).join('');
-	if (chars.every(c => c === chars[0])) {
-		return ['FIVE_OF_KIND', 7]
-	}
-	if (/(.)\1\1\1/.test(orderedHand)) {
-		return ['FOUR_OF_KIND', 6]
-	}
-	if (/(.)\1\1(.)\2/.test(orderedHand)) {
-		return ['FULL_HOUSE', 5]
-	}
-	if (/(.)\1\1/.test(orderedHand)) {
-		return ['THREE_OF_KIND', 4]
-	}
-	if (/(.)\1(.)\2/.test(orderedHand)) {
-		return ['TWO_PAIR', 3]
-	}
-	if (/(.)\1/.test(orderedHand)) {
-		return ['ONE_PAIR', 2]
-	}
-	return ['HIGH_PAIR', 1]
+	return chars.sort((a, b) => counts[b] - counts[a] || a.localeCompare(b)).join('');
 }
 
-const strengths = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
-const strengths2 = ['A', 'K', 'Q', 'T', '9', '8', '7', '6', '5', '4', '3', '2', 'J']
+type CardType = 'FIVE_OF_KIND' | 'FOUR_OF_KIND' | 'FULL_HOUSE' | 'THREE_OF_KIND' | 'TWO_PAIR' | 'ONE_PAIR' | 'HIGH_PAIR'
+
+const CARD_TYPES = ['HIGH_PAIR', 'ONE_PAIR', 'TWO_PAIR', 'THREE_OF_KIND', 'FULL_HOUSE', 'FOUR_OF_KIND', 'FIVE_OF_KIND']
+const typeToStrength = (type: CardType) => CARD_TYPES.indexOf(type)
+
+const STRENGTHS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
+const WILD_JOKERS_STRENGTH = ['A', 'K', 'Q', 'T', '9', '8', '7', '6', '5', '4', '3', '2', 'J']
+
+const handToBestStrength = (hand: string) => {
+	let bestStrength = Number.MIN_SAFE_INTEGER
+	const pool = [hand];
+	while (pool.length) {
+		const hand = pool.pop()!
+		for (const char of WILD_JOKERS_STRENGTH.slice(0, -1)) {
+			const newHand = hand.replace('J', char);
+			if (newHand.includes('J')) pool.push(newHand)
+			else bestStrength = Math.max(bestStrength, typeToStrength(handToType(newHand)))
+		}
+	}
+	return bestStrength
+}
+
+
+const CARD_TYPE_REGEXES: [RegExp, CardType][] = [
+	[/(.)\1\1\1\1/, 'FIVE_OF_KIND'],
+	[/(.)\1\1\1/, 'FOUR_OF_KIND'],
+	[/(.)\1\1(.)\2/, 'FULL_HOUSE'],
+	[/(.)\1\1/, 'THREE_OF_KIND'],
+	[/(.)\1(.)\2/, 'TWO_PAIR'],
+	[/(.)\1/, 'ONE_PAIR'],
+]
+const handToType = (hand: string): CardType => {
+	const orderedHand = orderStringByFrequency(hand);
+
+	for (const [regex, type] of CARD_TYPE_REGEXES) {
+		if (regex.test(orderedHand)) return type;
+	}
+
+	return 'HIGH_PAIR'
+}
+assert.deepStrictEqual(handToType('AAAAA'), 'FIVE_OF_KIND')
+assert.deepStrictEqual(handToType('AA8AA'), 'FOUR_OF_KIND')
+assert.deepStrictEqual(handToType('23332'), 'FULL_HOUSE')
+assert.deepStrictEqual(handToType('TTT98'), 'THREE_OF_KIND')
+assert.deepStrictEqual(handToType('23432'), 'TWO_PAIR')
+assert.deepStrictEqual(handToType('A23A4'), 'ONE_PAIR')
+assert.deepStrictEqual(handToType('23456'), 'HIGH_PAIR')
+
+const handToStrength = (hand: string) => typeToStrength(handToType(hand))
+
+
+function solve(data: string, wildJokers: boolean) {
+	return data.trim().split('\n').map(line => {
+		const [hand, bid] = line.split(' ')
+		return {
+			hand,
+			bid: +bid,
+			strength: wildJokers ? handToBestStrength(hand) : handToStrength(hand)
+		}
+	}).sort((a, b) => {
+		if (a.strength !== b.strength) return a.strength - b.strength;
+
+		for (let i = 0; i < 5; i++) {
+			const aStr = STRENGTHS.indexOf(a.hand[i]);
+			const bStr = STRENGTHS.indexOf(b.hand[i]);
+			if (aStr !== bStr) return bStr - aStr;
+		}
+
+		return 0;
+	}).reduce((winnings, card, i) => winnings + (card.bid * (i + 1)), 0)
+}
 
 function solveOne(data: string): any {
-	const cards = data.trim().split('\n').map(line => {
-		const [hand, bid] = line.split(' ')
-		return { hand, bid: +bid, type: handToType(hand) }
-	}).sort((a, b) => {
-		const at = a.type[1];
-		const bt = b.type[1];
-		if (at !== bt) return at - bt
-		for (let i = 0; i < a.hand.length; i++) {
-			const ac = strengths.indexOf(a.hand[i])
-			const bc = strengths.indexOf(b.hand[i])
-			if (ac === bc) continue;
-			return bc - ac
-		}
-		return 0;
-	})
-
-	return cards.reduce((winnings, card, i) => winnings + (card.bid * (i + 1)), 0)
+	return solve(data, false);
 }
 
 
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
-	assert.deepStrictEqual(handToType('AAAAA'), ['FIVE_OF_KIND', 7])
-	assert.deepStrictEqual(handToType('AA8AA'), ['FOUR_OF_KIND', 6])
-	assert.deepStrictEqual(handToType('23332'), ['FULL_HOUSE', 5])
-	assert.deepStrictEqual(handToType('TTT98'), ['THREE_OF_KIND', 4])
-	assert.deepStrictEqual(handToType('23432'), ['TWO_PAIR', 3])
-	assert.deepStrictEqual(handToType('A23A4'), ['ONE_PAIR', 2])
-	assert.deepStrictEqual(handToType('23456'), ['HIGH_PAIR', 1])
 	assert.deepStrictEqual(solveOne(`32T3K 765
 T55J5 684
 KK677 28
@@ -93,23 +102,7 @@ QQQJA 483`), 6440);
 
 
 function solveTwo(data: string): any {
-	const cards = data.trim().split('\n').map(line => {
-		const [hand, bid] = line.split(' ')
-		return { hand, bid: +bid, type: toBestHand(hand) }
-	}).sort((a, b) => {
-		const at = a.type[1];
-		const bt = b.type[1];
-		if (at !== bt) return at - bt
-		for (let i = 0; i < a.hand.length; i++) {
-			const ac = strengths2.indexOf(a.hand[i])
-			const bc = strengths2.indexOf(b.hand[i])
-			if (ac === bc) continue;
-			return bc - ac
-		}
-		return 0;
-	})
-
-	return cards.reduce((winnings, card, i) => winnings + (card.bid * (i + 1)), 0)
+	return solve(data, true);
 }
 
 
