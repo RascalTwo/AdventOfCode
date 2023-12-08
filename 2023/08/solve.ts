@@ -13,35 +13,38 @@ const lcm = (a: number, b: number) => {
 	return a * b / gcd(a, b)
 }
 
-const parseChoices = (data: string) => data.trim().split('\n')[0].replace(/R/g, '1').replace(/L/g, '0').split('').map(Number);
+const parseChoices = (data: string) => data.trim().split('\n')[0].toLowerCase().split('');
 
 const generateGraph = (lines: string[]) => {
-	const nodes = lines.map(line => {
+	const graph = lines.reduce((graph, line) => {
 		const label = line.split(' ')[0];
 		const [left, right] = line.split('(')[1].split(')')[0].split(', ')
-		return { label, left, right }
-	})
 
-	const edges = new Map()
-	for (const node of nodes) edges.set(node.label, [node.left, node.right])
+		graph.set(label, { label, l: left, r: right });
 
-	return { nodes, edges }
+		return graph
+	}, new Map())
+
+	for (const node of graph.values()) {
+		if (typeof node.l === 'string') node.l = graph.get(node.l)
+		if (typeof node.r === 'string') node.r = graph.get(node.r)
+	}
+
+	return graph
 }
 
 function solve(data: string, startRegex: RegExp, endRegex: RegExp): any {
 	const choices = parseChoices(data)
-	const { nodes, edges } = generateGraph(data.trim().split('\n\n')[1].split('\n'));
+	const graph = generateGraph(data.trim().split('\n\n')[1].split('\n'));
 
-	return nodes.filter(node => startRegex.test(node.label)).reduce((totalSteps, node) => {
-		let steps = 0;
-		let current = node.label
-		let choiceIndex = 0;
-		while (!endRegex.test(current)) {
-			current = edges.get(current)[choices[choiceIndex++ % choices.length]]
-			steps++
-		}
-		return lcm(totalSteps, steps)
-	}, 1)
+	return [...graph.values()]
+		.filter(({ label }) => startRegex.test(label))
+		.reduce((totalSteps, node) => {
+			let steps = 0;
+			for (let choiceIndex = 0; !endRegex.test(node.label); choiceIndex++, steps++)
+				node = node[choices[choiceIndex % choices.length]];
+			return lcm(totalSteps, steps)
+		}, 1)
 }
 
 function solveOne(data: string): any {
