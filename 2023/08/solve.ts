@@ -4,27 +4,48 @@ const fs = require('fs');
 const assert = require('assert');
 
 
+const gcd = (a: number, b: number) => {
+	while (b) [a, b] = [b, a % b];
+	return a
+}
+
+const lcm = (a: number, b: number) => {
+	return a * b / gcd(a, b)
+}
+
+const parseChoices = (data: string) => data.trim().split('\n')[0].replace(/R/g, '1').replace(/L/g, '0').split('').map(Number);
+
+const generateGraph = (lines: string[]) => {
+	const nodes = lines.map(line => {
+		const label = line.split(' ')[0];
+		const [left, right] = line.split('(')[1].split(')')[0].split(', ')
+		return { label, left, right }
+	})
+
+	const edges = new Map()
+	for (const node of nodes) edges.set(node.label, [node.left, node.right])
+
+	return { nodes, edges }
+}
+
+function solve(data: string, startRegex: RegExp, endRegex: RegExp): any {
+	const choices = parseChoices(data)
+	const { nodes, edges } = generateGraph(data.trim().split('\n\n')[1].split('\n'));
+
+	return nodes.filter(node => startRegex.test(node.label)).reduce((totalSteps, node) => {
+		let steps = 0;
+		let current = node.label
+		let choiceIndex = 0;
+		while (!endRegex.test(current)) {
+			current = edges.get(current)[choices[choiceIndex++ % choices.length]]
+			steps++
+		}
+		return lcm(totalSteps, steps)
+	}, 1)
+}
 
 function solveOne(data: string): any {
-	const choices = data.trim().split('\n')[0].replace(/R/g, '1').replace(/L/g, '0').split('').map(Number);
-
-	const nodes = data.trim().split('\n\n')[1].split('\n').map(line => {
-		const origin = line.split(' ')[0];
-		const [left, right] = line.split('(')[1].split(')')[0].split(', ')
-		return { origin, left, right }
-	})
-	const map = new Map()
-	for (const node of nodes) map.set(node.origin, [node.left, node.right])
-
-	let steps = 0;
-	let choiceIndex = 0;
-	let current = 'AAA'
-	while (current !== 'ZZZ') {
-		steps++;
-		current = map.get(current)[choices[choiceIndex++ % choices.length]]
-	}
-
-	return steps
+	return solve(data, /AAA/, /ZZZ/)
 }
 
 
@@ -49,43 +70,7 @@ ZZZ = (ZZZ, ZZZ)`), 6);
 
 
 function solveTwo(data: string): any {
-	const choices = data.trim().split('\n')[0].replace(/R/g, '1').replace(/L/g, '0').split('').map(Number);
-
-	const nodes = data.trim().split('\n\n')[1].split('\n').map(line => {
-		const origin = line.split(' ')[0];
-		const [left, right] = line.split('(')[1].split(')')[0].split(', ')
-		return { origin, left, right }
-	})
-	const map = new Map()
-	for (const node of nodes) map.set(node.origin, [node.left, node.right])
-
-	let stepsTaken = [];
-	for (const [n, node] of nodes.entries()) {
-		if (node.origin[2] !== 'A') continue;
-		let steps = 0;
-		let current = node.origin
-		while (current[2] !== 'Z') {
-			for (const i of choices) {
-				current = map.get(current)[i]
-				steps++
-				if (current[2] === 'Z') break;
-			}
-		}
-		stepsTaken.push(steps);
-	}
-
-	return stepsTaken.reduce((a, b) => lcm(a, b))
-}
-
-const gcd = (a: number, b: number) => {
-	while (b) {
-		[a, b] = [b, a % b]
-	}
-	return a
-}
-
-const lcm = (a: number, b: number) => {
-	return a * b / gcd(a, b)
+	return solve(data, /A$/, /Z$/)
 }
 
 (() => {
