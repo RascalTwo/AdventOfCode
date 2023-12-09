@@ -4,70 +4,69 @@ const fs = require('fs');
 const assert = require('assert');
 
 
-function addNewColToRows(rows: number[][]) {
+function extrapolateNewColumn(rows: number[][], direction: 'future' | 'past') {
+	const colIndex = direction === 'future' ? -1 : 0;
+	const changeSign = direction === 'future' ? 1 : -1
+	const rowMethod = direction === 'future' ? 'push' : 'unshift'
+
 	rows.at(-1)!.push(0);
 	for (let i = rows.length - 2; i >= 0; i--) {
 		const row = rows[i]
-		const current = row.at(-1)!;
-		const change = rows[i + 1].at(-1)!
-		row.push(current + change)
+		const current = row.at(colIndex)!;
+		const change = rows[i + 1].at(colIndex)! * changeSign
+		row[rowMethod](current + change)
 	}
 	return rows
 }
 
-function addNewColToRowsRevere(rows: number[][]) {
-	rows.at(-1)!.push(0);
-	for (let i = rows.length - 2; i >= 0; i--) {
-		const row = rows[i]
-		const current = row.at(0)!;
-		const change = -rows[i + 1].at(0)!
-		row.unshift(current + change)
+function generateDifferenceRows(line: string) {
+	const rows = [
+		line.split(' ').map(Number)
+	]
+	for (let lastRow = rows[0]; rows.at(-1)!.some(n => n !== 0); lastRow = rows.at(-1)!) {
+		const nextRow = [];
+		for (let i = 0; i < lastRow.length - 1; i++) {
+			nextRow.push(lastRow[i + 1] - lastRow[i])
+		}
+		rows.push(nextRow)
 	}
-	return rows
+	return rows;
+}
+
+function solve(data: string, direction: 'future' | 'past') {
+	return data.trim().split('\n').reduce((total, line) => {
+		const rows = generateDifferenceRows(line);
+		extrapolateNewColumn(rows, direction);
+		return total + rows[0].at(direction === 'future' ? -1 : 0)!
+	}, 0);
 }
 
 function solveOne(data: string): any {
-	let total = 0
-	for (const line of data.trim().split('\n')) {
-		const rows = [
-			line.split(' ').map(Number)
-		]
-		while (rows.at(-1)!.reduce((a, b) => a + b, 0) !== 0) {
-			const nextRow = [];
-			const lastRow = rows.at(-1)!;
-			for (let i = 0; i < lastRow.length - 1; i++) {
-				nextRow.push(lastRow[i + 1] - lastRow[i])
-			}
-			rows.push(nextRow)
-		}
-		addNewColToRows(rows)
-		total += rows[0].at(-1)!
-	}
-	return total
+	return solve(data, 'future')
 }
 
 
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
-	assert.deepStrictEqual(addNewColToRows([[0, 3, 6, 9, 12, 15], [3, 3, 3, 3, 3], [0, 0, 0, 0]]), [[0, 3, 6, 9, 12, 15, 18], [3, 3, 3, 3, 3, 3], [0, 0, 0, 0, 0]])
-	assert.deepStrictEqual(addNewColToRows([
+	assert.deepStrictEqual(extrapolateNewColumn([[0, 3, 6, 9, 12, 15], [3, 3, 3, 3, 3], [0, 0, 0, 0]], 'future'), [[0, 3, 6, 9, 12, 15, 18], [3, 3, 3, 3, 3, 3], [0, 0, 0, 0, 0]])
+	assert.deepStrictEqual(extrapolateNewColumn([
 		[1, 3, 6, 10, 15, 21],
 		[2, 3, 4, 5, 6],
 		[1, 1, 1, 1],
 		[0, 0, 0]
-	]), [
+	], 'future'), [
 		[1, 3, 6, 10, 15, 21, 28],
 		[2, 3, 4, 5, 6, 7],
 		[1, 1, 1, 1, 1],
 		[0, 0, 0, 0]
 	])
-	assert.deepStrictEqual(addNewColToRows([
+	assert.deepStrictEqual(extrapolateNewColumn([
 		[10, 13, 16, 21, 30, 45],
 		[3, 3, 5, 9, 15],
 		[0, 2, 4, 6],
 		[2, 2, 2],
 		[0, 0]
-	]), [
+	], 'future'), [
 		[10, 13, 16, 21, 30, 45, 68],
 		[3, 3, 5, 9, 15, 23],
 		[0, 2, 4, 6, 8],
@@ -82,35 +81,19 @@ function solveOne(data: string): any {
 
 
 function solveTwo(data: string): any {
-	let total = 0
-	for (const line of data.trim().split('\n')) {
-		const rows = [
-			line.split(' ').map(Number)
-		]
-		while (rows.at(-1)!.reduce((a, b) => a + b, 0) !== 0) {
-			const nextRow = [];
-			const lastRow = rows.at(-1)!;
-			for (let i = 0; i < lastRow.length - 1; i++) {
-				nextRow.push(lastRow[i + 1] - lastRow[i])
-			}
-			rows.push(nextRow)
-		}
-		addNewColToRowsRevere(rows)
-		total += rows[0][0]
-	}
-	return total
+	return solve(data, 'past')
 }
 
 
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
-	assert.deepStrictEqual(addNewColToRowsRevere([
+	assert.deepStrictEqual(extrapolateNewColumn([
 		[10, 13, 16, 21, 30, 45],
 		[3, 3, 5, 9, 15],
 		[0, 2, 4, 6],
 		[2, 2, 2],
 		[0, 0]
-	]), [
+	], 'past'), [
 		[5, 10, 13, 16, 21, 30, 45],
 		[5, 3, 3, 5, 9, 15],
 		[-2, 0, 2, 4, 6],
