@@ -3,21 +3,20 @@ const fs = require('fs');
 // @ts-ignore
 const assert = require('assert');
 
+type Lens = { label: string, focalLength: number }
+
 function hash(step: string): number {
 	let value = 0;
-	for (const char of step) {
-		const asci = char.charCodeAt(0);
-		value += asci;
-		value *= 17;
-		value %= 256
-	}
+	for (let i = 0; i < step.length; i++)
+		value = ((value + step.charCodeAt(i)) * 17) % 256
 	return value
 }
-
 assert.deepStrictEqual(hash('HASH'), 52);
+
 function solveOne(data: string): any {
-	const steps = data.trim().split(',');
-	return steps.map(step => hash(step)).reduce((a, b) => a + b, 0);
+	return data.trim().split(',')
+		.map(hash)
+		.reduce((a, b) => a + b, 0);
 }
 
 
@@ -29,34 +28,29 @@ function solveOne(data: string): any {
 
 
 function solveTwo(data: string): any {
-	const steps = data.trim().split(',');
-	const boxes: { label: string, focalLength: number }[][] = new Array(256).fill(0).map(() => [])
-	for (const step of steps) {
-		const label = step.split(/=|-/)[0];
-		const focalLength = parseInt(step.split(/=|-/)[1]);
-		const boxIndex = hash(label);
-		const box = boxes[boxIndex];
+	const boxes: Lens[][] = Array.from({ length: 256 }, () => []);
+	for (const step of data.trim().split(',')) {
+		const operation = step.match(/=|-/)![0];
+		const label = step.split(operation)[0];
+		const box = boxes[hash(label)];
 		const existingIndex = box.findIndex(lens => lens.label === label)
-		if (isNaN(focalLength)) {
-			if (existingIndex !== -1) {
-				box.splice(existingIndex, 1);
-			}
-		} else {
-			if (existingIndex === -1) {
-				box.push({ label, focalLength });
-			} else {
-				box.splice(existingIndex, 1, { label, focalLength });
-			}
+		if (operation === '=') {
+			const lens = { label, focalLength: parseInt(step.split(operation)[1]) }
+			if (existingIndex === -1)
+				box.push(lens);
+			else
+				box.splice(existingIndex, 1, lens);
+			continue
+		}
+		if (existingIndex !== -1) {
+			box.splice(existingIndex, 1);
 		}
 	}
 
 	let totalPower = 0;
-	for (const [bi, box] of boxes.entries()) {
-		for (const [li, lens] of box.entries()) {
-			const power = (1 + bi) * (li + 1) * lens.focalLength
-			totalPower += power;
-		}
-	}
+	for (const [bi, box] of boxes.entries())
+		for (const [li, lens] of box.entries())
+			totalPower += (1 + bi) * (li + 1) * lens.focalLength;
 	return totalPower;
 }
 
