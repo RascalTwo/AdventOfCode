@@ -2,38 +2,62 @@ const fs = require('fs');
 const assert = require('assert');
 
 
-
-const tupleToXYZ = (tuple: number[]) => ({
-	x: tuple[0],
-	y: tuple[1],
-	z: tuple[2],
-});
-
 type Coord = { x: number, y: number, z: number };
 
-type Cube = { index: number, start: Coord, end: Coord, ranges: { x: [number, number], y: [number, number], z: [number, number] } };
+type Brick = { index: number, start: Coord, end: Coord, ranges: { x: [number, number], y: [number, number], z: [number, number] } };
 
-function areCubesIntersecting(a: Cube, b: Cube) {
-	return (
-		a.start.x <= b.end.x && a.end.x >= b.start.x &&
-		a.start.y <= b.end.y && a.end.y >= b.start.y &&
-		a.start.z <= b.end.z && a.end.z >= b.start.z
-	);
-}
 
-const moveCube = (cube: Cube, change: Coord): Cube => {
+const parseBricks = (data: string): Brick[] => data.trim().split('\n').map((snapshot, i) => {
+	const halves = snapshot.split('~').map(half => {
+		const [x, y, z] = half.split(',').map(Number)
+		return { x, y, z }
+	});
+	const minX = Math.min(halves[0].x, halves[1].x);
+	const minY = Math.min(halves[0].y, halves[1].y);
+	const minZ = Math.min(halves[0].z, halves[1].z);
+	const maxX = Math.max(halves[0].x, halves[1].x);
+	const maxY = Math.max(halves[0].y, halves[1].y);
+	const maxZ = Math.max(halves[0].z, halves[1].z);
+	return { index: i, start: halves[0], end: halves[1], ranges: { x: [minX, maxX], y: [minY, maxY], z: [minZ, maxZ] } }
+});
+
+const areBricksIntersecting = (a: Brick, b: Brick) => (
+	a.start.x <= b.end.x && a.end.x >= b.start.x &&
+	a.start.y <= b.end.y && a.end.y >= b.start.y &&
+	a.start.z <= b.end.z && a.end.z >= b.start.z
+);
+
+const areBricksEqual = (a: Brick, b: Brick) => (
+	a.start.x === b.start.x &&
+	a.start.y === b.start.y &&
+	a.start.z === b.start.z &&
+	a.end.x === b.end.x &&
+	a.end.y === b.end.y &&
+	a.end.z === b.end.z
+);
+
+const copyBrick = (brick: Brick): Brick => ({
+	index: brick.index,
+	start: { ...brick.start },
+	end: { ...brick.end },
+	ranges: { x: [...brick.ranges.x], y: [...brick.ranges.y], z: [...brick.ranges.z] },
+})
+
+const removeBrick = (brick: Brick, bricks: Brick[]) => bricks.splice(bricks.findIndex(c => c.index === brick.index), 1);
+
+const moveBrick = (brick: Brick, change: Coord): Brick => {
 	const start = {
-		x: cube.start.x + change.x,
-		y: cube.start.y + change.y,
-		z: cube.start.z + change.z,
+		x: brick.start.x + change.x,
+		y: brick.start.y + change.y,
+		z: brick.start.z + change.z,
 	}
 	const end = {
-		x: cube.end.x + change.x,
-		y: cube.end.y + change.y,
-		z: cube.end.z + change.z,
+		x: brick.end.x + change.x,
+		y: brick.end.y + change.y,
+		z: brick.end.z + change.z,
 	}
 	return {
-		index: cube.index,
+		index: brick.index,
 		start,
 		end,
 		ranges: {
@@ -44,123 +68,69 @@ const moveCube = (cube: Cube, change: Coord): Cube => {
 	};
 }
 
-function copyCube(cube: Cube): Cube {
-	return {
-		index: cube.index,
-		start: { ...cube.start },
-		end: { ...cube.end },
-		ranges: { x: [...cube.ranges.x], y: [...cube.ranges.y], z: [...cube.ranges.z] },
-	};
+function isSupportingAnotherBrick(brick: Brick, bricks: Brick[]) {
+	removeBrick(brick, bricks);
+	return tick(bricks);
 }
 
-function isSupportingAnotherCube(cube: Cube, cubes: Cube[]) {
-	cubes.splice(cubes.findIndex(c => c.index === cube.index), 1);
-	return tick(cubes);
-}
 
-function areCubesEqual(a: Cube, b: Cube) {
-	return (
-		a.start.x === b.start.x &&
-		a.start.y === b.start.y &&
-		a.start.z === b.start.z &&
-		a.end.x === b.end.x &&
-		a.end.y === b.end.y &&
-		a.end.z === b.end.z
-	);
-}
+function numberOfBricksCausedToFall(brick: Brick, bricks: Brick[]): number {
+	removeBrick(brick, bricks);
+	const originalBricks = bricks.map(copyBrick);
 
-function numberOfBricksCausedToFall(cube: Cube, cubes: Cube[]): number {
-	cubes.splice(cubes.findIndex(c => c.index === cube.index), 1);
-	const originalCubes = cubes.map(copyCube);
-
-	let cubesMoved = 0;
-	cubes.sort((a, b) => a.ranges.z[0] - b.ranges.z[0]);
-	for (let c = 0; c < cubes.length; c++) {
-		const cube = cubes[c];
-		if (cube.ranges.z[0] === 1) continue;
-		let z = -1;
-		let lowest = null;
-		while (true) {
-			const downCube = moveCube(cube, { x: 0, y: 0, z });
-			let blocked = false;
-			for (const otherCube of cubes) {
-				if (otherCube === cube) continue;
-				if (areCubesIntersecting(downCube, otherCube)) {
-					blocked = true;
-					break;
-				}
-			}
-			if (blocked) break
-			z--;
-			lowest = downCube;
-			if (downCube.ranges.z[0] === 1) break;
-		}
-		if (lowest) {
-			cubes.splice(c, 1, lowest);
-			cubesMoved++;
-		}
-	}
+	tick(bricks);
 
 	let numberOfMovedBricks = 0;
-	for (const cube of cubes) {
-		const originalCube = originalCubes.find(c => c.index === cube.index)!;
-		numberOfMovedBricks += areCubesEqual(cube, originalCube) ? 0 : 1;
-	}
+	for (const brick of bricks)
+		numberOfMovedBricks += +!areBricksEqual(brick, originalBricks.find(c => c.index === brick.index)!)
 	return numberOfMovedBricks;
-
 }
 
-function tick(cubes: Cube[]) {
-	let cubesMoved = false;
-	cubes.sort((a, b) => a.ranges.z[0] - b.ranges.z[0]);
-	for (let c = 0; c < cubes.length; c++) {
-		const cube = cubes[c];
-		if (cube.ranges.z[0] === 1) continue;
+function tick(bricks: Brick[]) {
+	bricks.sort((a, b) => a.ranges.z[0] - b.ranges.z[0]);
+
+	let bricksMoved = false;
+	for (let c = 0; c < bricks.length; c++) {
+		const brick = bricks[c];
+		if (brick.ranges.z[0] === 1) continue;
+
 		let z = -1;
 		let lowest = null;
 		while (true) {
-			const downCube = moveCube(cube, { x: 0, y: 0, z });
+			const destBrick = moveBrick(brick, { x: 0, y: 0, z });
 			let blocked = false;
-			for (const otherCube of cubes) {
-				if (otherCube === cube) continue;
-				if (areCubesIntersecting(downCube, otherCube)) {
+			for (const otherBrick of bricks) {
+				if (otherBrick === brick) continue;
+				if (areBricksIntersecting(destBrick, otherBrick)) {
 					blocked = true;
 					break;
 				}
 			}
 			if (blocked) break
+
 			z--;
-			lowest = downCube;
-			if (downCube.ranges.z[0] === 1) break;
+			lowest = destBrick;
+
+			if (destBrick.ranges.z[0] === 1) break;
 		}
+
 		if (lowest) {
-			cubes.splice(c, 1, lowest);
-			cubesMoved = true;
+			bricks.splice(c, 1, lowest);
+			bricksMoved = true;
 		}
 	}
-	return cubesMoved;
+	return bricksMoved;
 }
 
 function solveOne(data: string): any {
-	const cubes: Cube[] = data.trim().split('\n').map((snapshot, i) => {
-		const halves = snapshot.split('~').map(half => half.split(',').map(Number));
-		const minX = Math.min(halves[0][0], halves[1][0]);
-		const minY = Math.min(halves[0][1], halves[1][1]);
-		const minZ = Math.min(halves[0][2], halves[1][2]);
-		const maxX = Math.max(halves[0][0], halves[1][0]);
-		const maxY = Math.max(halves[0][1], halves[1][1]);
-		const maxZ = Math.max(halves[0][2], halves[1][2]);
-		return { index: i, start: tupleToXYZ(halves[0]), end: tupleToXYZ(halves[1]), ranges: { x: [minX, maxX], y: [minY, maxY], z: [minZ, maxZ] } }
-	});
+	const bricks = parseBricks(data);
 
-	let cycles = 0
-	while (tick(cubes)) console.log(++cycles)
+	while (tick(bricks)) { }
+
 	let canBeDisintegrated = 0;
-	for (const cube of cubes) {
-		if (!isSupportingAnotherCube(cube, cubes.map(copyCube))) {
+	for (const brick of bricks)
+		if (!isSupportingAnotherBrick(brick, bricks.map(copyBrick)))
 			canBeDisintegrated++;
-		}
-	}
 	return canBeDisintegrated;
 }
 
@@ -175,28 +145,17 @@ function solveOne(data: string): any {
 0,1,6~2,1,6
 1,1,8~1,1,9`), 5);
 	console.log(solveOne(data));
-})
-
+})();
 
 function solveTwo(data: string): any {
-	const cubes: Cube[] = data.trim().split('\n').map((snapshot, i) => {
-		const halves = snapshot.split('~').map(half => half.split(',').map(Number));
-		const minX = Math.min(halves[0][0], halves[1][0]);
-		const minY = Math.min(halves[0][1], halves[1][1]);
-		const minZ = Math.min(halves[0][2], halves[1][2]);
-		const maxX = Math.max(halves[0][0], halves[1][0]);
-		const maxY = Math.max(halves[0][1], halves[1][1]);
-		const maxZ = Math.max(halves[0][2], halves[1][2]);
-		return { index: i, start: tupleToXYZ(halves[0]), end: tupleToXYZ(halves[1]), ranges: { x: [minX, maxX], y: [minY, maxY], z: [minZ, maxZ] } }
-	});
+	const bricks = parseBricks(data);
 
-	let cycles = 0
-	while (tick(cubes)) console.log(++cycles)
-	let bricksCausedToFall = 0;
-	for (const cube of cubes) {
-		bricksCausedToFall += numberOfBricksCausedToFall(cube, cubes.map(copyCube));
-	}
-	return bricksCausedToFall;
+	while (tick(bricks)) { }
+
+	let bricksFallen = 0;
+	for (const brick of bricks)
+		bricksFallen += numberOfBricksCausedToFall(brick, bricks.map(copyBrick));
+	return bricksFallen;
 }
 
 
