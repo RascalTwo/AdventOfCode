@@ -2,14 +2,26 @@ const fs = require('fs');
 const assert = require('assert');
 
 
+function solve(data: string, conditionalMultiplications: boolean) {
+	const matches = data.match(conditionalMultiplications ? /mul\(\d+,\d+\)|do\(\)|don't\(\)/g : /mul\(\d+,\d+\)/g) ?? []
+
+	let enabled = true
+	let result = 0
+	for (const match of matches) {
+		if (match.startsWith('do')) {
+			enabled = match === 'do()'
+			continue
+		}
+
+		if (enabled) {
+			result += match.split('(')[1].split(')')[0].split(',').map(Number).reduce((a, b) => a * b, 1)
+		}
+	}
+	return result
+}
 
 function solveOne(data: string): any {
-	const matches = data.match(/mul\(\d+,\d+\)/ig)
-	const results = matches?.map(match => {
-		const [a, b] = match.split('(')[1].split(')')[0].split(',').map(Number)
-		return a * b
-	})
-	return results?.reduce((a, b) => a + b, 0)
+	return solve(data, false)
 }
 
 
@@ -22,22 +34,7 @@ function solveOne(data: string): any {
 
 
 function solveTwo(data: string): any {
-	const matches = data.match(/((mul\(\d+,\d+\))|(do\(\))|(don't\(\)))/ig)
-	let enabled = true
-	const results = matches?.map(match => {
-		if (match.startsWith('do')) {
-			enabled = match === 'do()'
-			return 0
-		}
-		if (enabled) {
-			const [a, b] = match.split('(')[1].split(')')[0].split(',').map(Number)
-			return a * b
-		}
-		else {
-			return 0
-		}
-	})
-	return results?.reduce((a, b) => a + b, 0)
+	return solve(data, true)
 }
 
 
