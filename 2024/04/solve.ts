@@ -1,35 +1,51 @@
 const fs = require('fs');
 const assert = require('assert');
 
+const CARDINAL_DIRECTION = [[-1, 0], [0, -1], [0, 1], [1, 0]] as [number, number][];
+const DIAGONAL_DIRECTIONS = [[-1, -1], [1, 1], [1, -1], [-1, 1]] as [number, number][]
 
-//const DIRECTIONS = [[1,1], [1,0], [0,-1], [-1,-1], [-1,-1], [0,0], [0,0]]
+const ALL_DIRECTIONS = [
+	...CARDINAL_DIRECTION,
+	...DIAGONAL_DIRECTIONS
+]
 
-function solveOne(data: string): any {
-	let xmases = 0
-	const world = data.split('\n').map(l => [...l])
+const wordExistsAt = (world: string[], word: string, r: number, c: number, ro: number, co: number) => [...word.slice(1)].every((char, i) => {
+	const [nr, nc] = [
+		r + (ro * (i + 1)),
+		c + (co * (i + 1))
+	]
+	return world[nr]?.[nc] === char
+})
+
+
+function* findWords(data: string, word: string, directions: [number, number][]) {
+	const world = data.split('\n')
 	for (let r = 0; r < world.length; r++) {
 		for (let c = 0; c < world[r].length; c++) {
-			if (world[r][c] !== 'X') continue;
+			if (world[r][c] !== word[0]) continue;
 
-			for (let ro = -1; ro <= 1; ro++) {
-				for (let co = -1; co <= 1; co++) {
-					if (ro === 0 && co === 0) continue
-					let found = true;
-					for (const [ci, char] of [...'XMAS'].entries()) {
-						const [nr, nc] = [r + ro * ci, c + co * ci]
-						if (world[nr]?.[nc] !== char) {
-							found = false
-							break
-						}
-					}
-					if (found) {
-						xmases++
+			for (const [ro, co] of directions) {
+				if (wordExistsAt(world, word, r, c, ro, co)) {
+					yield {
+						r,
+						c,
+						direction: { r: ro, c: co }
 					}
 				}
 			}
 		}
 	}
-	return xmases
+}
+
+function countGeneratorResults(generator: Generator) {
+	let count = 0
+	for (const _ of generator)
+		count++
+	return count;
+}
+
+function solveOne(data: string): any {
+	return countGeneratorResults(findWords(data, 'XMAS', ALL_DIRECTIONS))
 }
 
 
@@ -50,42 +66,23 @@ SMSMSASXSS
 SAXAMASAAA
 MAMMMXMMMM
 MXMXAXMASX`), 18);
-	console.log(solveOne(data));
+	assert.deepStrictEqual(solveOne(data), 2483);
 })();
 
 
-function solveTwo(data: string): any {
-	data = data.trim()
-	let mases = {}
-	const world = data.split('\n').map(l => [...l])
-	for (let r = 0; r < world.length; r++) {
-		for (let c = 0; c < world[r].length; c++) {
-			if (world[r][c] !== 'M') continue;
-
-			for (let ro = -1; ro <= 1; ro++) {
-				for (let co = -1; co <= 1; co++) {
-					if (ro === 0 && co === 0) continue
-					if (ro === 0 || co === 0) continue
-					let found = true;
-					let middleCoord = null
-					for (const [ci, char] of [...'MAS'].entries()) {
-						const [nr, nc] = [r + ro * ci, c + co * ci]
-						if (ci === 1) {
-							middleCoord = [nr, nc]
-						}
-						if (world[nr]?.[nc] !== char) {
-							found = false
-							break
-						}
-					}
-					if (found && middleCoord) {
-						mases[middleCoord.join('|')] = (mases[middleCoord.join('|')] ?? 0) + 1
-					}
-				}
-			}
-		}
+function solveTwo(data: string, word: string = 'MAS'): any {
+	if (word.length % 2 === 0) {
+		throw new Error('This does not work on even-length words')
 	}
-	return Object.values(mases).filter(count => count >= 2).length
+
+	const middleIndex = word.length - 1 - 1
+
+	const middles: Record<string, number> = {}
+	for (const { r, c, direction } of findWords(data, word, DIAGONAL_DIRECTIONS)) {
+		const middleCoord = [r + direction.r * middleIndex, c + direction.c * middleIndex].join('|')
+		middles[middleCoord] = (middles[middleCoord] ?? 0) + 1
+	}
+	return Object.values(middles).reduce((xmases, count) => xmases + +(count === 2), 0)
 }
 
 
@@ -113,5 +110,5 @@ S.S.S.S.S.
 .A.A.A.A..
 M.M.M.M.M.
 ..........`), 9);
-	console.log(solveTwo(data));
+	assert.deepStrictEqual(solveTwo(data), 1925);
 })();
