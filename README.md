@@ -7,13 +7,23 @@ Here is my code for Advent of Code
 - [Advent Of Code](#advent-of-code)
   - [Table of Contents](#table-of-contents)
   - [Placements](#placements)
+  - [2024](#2024)
   - [2022](#2022)
 
 ## Placements
 
-|                              2021                               |                              2020                               |                              2019                               |                              2018                               |                              2017                               |
-| :-------------------------------------------------------------: | :-------------------------------------------------------------: | :-------------------------------------------------------------: | :-------------------------------------------------------------: | :-------------------------------------------------------------: |
-| [![2021](media/2021-placements.png)](media/2021-placements.png) | [![2020](media/2020-placements.png)](media/2020-placements.png) | [![2019](media/2019-placements.png)](media/2019-placements.png) | [![2018](media/2018-placements.png)](media/2018-placements.png) | [![2017](media/2017-placements.png)](media/2017-placements.png) |
+|                              2023                               |                              2022                               |                              2021                               |                              2020                               |                              2019                               | 2018                                                            | 2017                                                            |
+| :-------------------------------------------------------------: | :-------------------------------------------------------------: | :-------------------------------------------------------------: | :-------------------------------------------------------------: | :-------------------------------------------------------------: | --------------------------------------------------------------- | --------------------------------------------------------------- |
+| [![2023](media/2023-placements.png)](media/2023-placements.png) | [![2022](media/2022-placements.png)](media/2022-placements.png) | [![2021](media/2021-placements.png)](media/2021-placements.png) | [![2020](media/2020-placements.png)](media/2020-placements.png) | [![2019](media/2019-placements.png)](media/2019-placements.png) | [![2018](media/2018-placements.png)](media/2018-placements.png) | [![2017](media/2017-placements.png)](media/2017-placements.png) |
+
+## 2024
+
+| Day |                                             Solving Video                                              |
+| :-: | :----------------------------------------------------------------------------------------------------: |
+| 01  | [![YouTube Video](https://img.youtube.com/vi/hTXZk0JEMhA/hqdefault.jpg)](https://youtu.be/hTXZk0JEMhA) |
+| 02  | [![YouTube Video](https://img.youtube.com/vi/n4Tz04yMCJ0/hqdefault.jpg)](https://youtu.be/n4Tz04yMCJ0) |
+| 03  | [![YouTube Video](https://img.youtube.com/vi/lP0IJkklaOM/hqdefault.jpg)](https://youtu.be/lP0IJkklaOM) |
+| 04  | [![YouTube Video](https://img.youtube.com/vi/26yifci91og/hqdefault.jpg)](https://youtu.be/26yifci91og) |
 
 ## 2022
 
