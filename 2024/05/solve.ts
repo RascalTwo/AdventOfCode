@@ -1,38 +1,47 @@
 const fs = require('fs');
 const assert = require('assert');
 
+function arePagesCorrectlyOrdered(pages: number[], pageOrderingRules: ReturnType<typeof categorizeUpdates>['pageOrderingRules']) {
+	const isAfter: number[] = []
+	const isBefore = [...pages].reverse()
 
+	return pages.every((page, i) => {
+		if (i) isAfter.push(pages[i - 1])
+		isBefore.pop()
+
+		const { shouldBeBefore, shouldBeAfter } = pageOrderingRules[page] ?? { shouldBeBefore: [], shouldBeAfter: [] }
+		return isAfter.every(after => !shouldBeBefore.has(after)) && isBefore.every(before => !shouldBeAfter.has(before))
+	})
+}
+
+function sumMiddlePage(updates: number[][]) {
+	return updates.map(pages => pages[Math.floor(pages.length / 2)]).reduce((a, b) => a + b, 0)
+}
+
+function categorizeUpdates(data: string) {
+	const [rawComparisons, rawUpdates] = data.replace(/\r/g, '').split('\n\n')
+	const comparisons = rawComparisons.split('\n').map(l => l.split('|').map(Number))
+	const pageOrderingRules: Record<string, { shouldBeBefore: Set<number>, shouldBeAfter: Set<number> }> = {};
+	for (const [before, after] of comparisons) {
+		if (!(before in pageOrderingRules)) pageOrderingRules[before] = { shouldBeBefore: new Set(), shouldBeAfter: new Set() }
+		pageOrderingRules[before].shouldBeBefore.add(after)
+		if (!(after in pageOrderingRules)) pageOrderingRules[after] = { shouldBeBefore: new Set(), shouldBeAfter: new Set() }
+		pageOrderingRules[after].shouldBeAfter.add(before)
+	}
+
+	const updates = rawUpdates.split('\n').map(l => l.split(',').map(Number))
+
+	const correct: number[][] = [];
+	const incorrect: number[][] = [];
+	for (const pages of updates)
+		(arePagesCorrectlyOrdered(pages, pageOrderingRules) ? correct : incorrect).push(pages);
+
+	return { correct, incorrect, pageOrderingRules }
+}
 
 function solveOne(data: string): any {
-	const [first, second] = data.replace(/\r/g, '').split('\n\n')
-	const comparisons = first.split('\n').map(l => l.split('|').map(Number))
-	const beforesAndAfters: Record<string, { before: number[], after: number[] }> = {};
-	// { 47: { before: [1, 2, 3], after: [5, 6, 7]}}
-	for (const [before, after] of comparisons) {
-		if (!(before in beforesAndAfters)) beforesAndAfters[before] = { before: [], after: [] }
-		beforesAndAfters[before].before.push(after)
-		if (!(after in beforesAndAfters)) beforesAndAfters[after] = { before: [], after: [] }
-		beforesAndAfters[after].after.push(before)
-	}
-	const updates = second.split('\n').map(l => l.split(',').map(Number))
-
-	const correctUpdates = updates.filter((pages) => {
-		for (let i = 0; i < pages.length; i++) {
-			const page = pages[i];
-			const isBefore = pages.slice(0, i)
-			const isAfter = pages.slice(i + 1)
-			const shouldBeBefore = beforesAndAfters[page]?.before
-			const shouldBeAfter = beforesAndAfters[page]?.after
-			if (shouldBeBefore.some(b4 => isBefore.includes(b4))) {
-				return false
-			}
-			if (shouldBeAfter.some(af => isAfter.includes(af))) {
-				return false
-			}
-		}
-		return true;
-	})
-	return correctUpdates.map(pages => pages[Math.floor(pages.length / 2)]).reduce((a, b) => a + b, 0)
+	const { correct } = categorizeUpdates(data)
+	return sumMiddlePage(correct)
 }
 
 
@@ -66,63 +75,25 @@ function solveOne(data: string): any {
 75,97,47,61,53
 61,13,29
 97,13,75,29,47`), 143);
-	console.log(solveOne(data));
+	assert.deepStrictEqual(solveOne(data), 6267);
 })();
 
 
 function solveTwo(data: string): any {
-	const [first, second] = data.replace(/\r/g, '').split('\n\n')
-	const comparisons = first.split('\n').map(l => l.split('|').map(Number))
-	const beforesAndAfters: Record<string, { before: number[], after: number[] }> = {};
-	for (const [before, after] of comparisons) {
-		if (!(before in beforesAndAfters)) beforesAndAfters[before] = { before: [], after: [] }
-		beforesAndAfters[before].before.push(after)
-		if (!(after in beforesAndAfters)) beforesAndAfters[after] = { before: [], after: [] }
-		beforesAndAfters[after].after.push(before)
-	}
-	const updates = second.split('\n').map(l => l.split(',').map(Number))
+	const { incorrect, pageOrderingRules } = categorizeUpdates(data);
 
-	const inCorrectUpdates = updates.filter((pages) => {
-		for (let i = 0; i < pages.length; i++) {
-			const page = pages[i];
-			const isBefore = pages.slice(0, i)
-			const isAfter = pages.slice(i + 1)
-			const shouldBeBefore = beforesAndAfters[page]?.before
-			const shouldBeAfter = beforesAndAfters[page]?.after
-			if (shouldBeBefore.some(b4 => isBefore.includes(b4))) {
-				return true
-			}
-			if (shouldBeAfter.some(af => isAfter.includes(af))) {
-				return true
-			}
-		}
-		return false;
-	})
-	inCorrectUpdates
-	inCorrectUpdates.forEach(incorrect => {
-		incorrect.sort((a, b) => {
-			if (beforesAndAfters[a].before.includes(b)) {
+	for (const pages of incorrect)
+		pages.sort((a, b) => {
+			if (pageOrderingRules[a].shouldBeBefore.has(b)) {
 				return -1
 			}
-			a
-			b
-			beforesAndAfters[a] //?
-			beforesAndAfters[b] //?
-			if (beforesAndAfters[a].after.includes(b)) {
+			if (pageOrderingRules[a].shouldBeAfter.has(b)) {
 				return 1
 			}
+			return 0
 		})
-	})
-	const correctOrdered = [
-		[97, 75, 47, 61, 53],
-		[61, 29, 13],
-		[97, 75, 47, 29, 13]
-	]
 
-	//inCorrectUpdates
-	//const fixedUpdates = inCorrectUpdates.filter((updates, i) => JSON.stringify(updates) === JSON.stringify(correctOrdered[i]))
-	//fixedUpdates
-	return inCorrectUpdates.map(pages => pages[Math.floor(pages.length / 2)]).reduce((a, b) => a + b, 0)
+	return sumMiddlePage(incorrect)
 }
 
 
@@ -156,5 +127,5 @@ function solveTwo(data: string): any {
 75,97,47,61,53
 61,13,29
 97,13,75,29,47`), 123);
-	console.log(solveTwo(data));
+	assert.deepStrictEqual(solveTwo(data), 5184);
 })();
