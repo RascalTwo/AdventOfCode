@@ -1,51 +1,45 @@
 const fs = require('fs');
 const assert = require('assert');
 
-
-
-function evalRawExpr(expression: (string | number)[]) {
-	while (expression.length !== 1) {
-		const things = expression.splice(0, 3)
-		let result = 0
-		if (things[1] === '||') {
-			result = +(things[0].toString() + things[2].toString())
-		} else {
-			result = eval(things.join(' '))
+function canBeMadeTrue(target: number, numbers: number[], operators: Operator[]) {
+	const processing: number[][] = [[...numbers].reverse()]
+	while (processing.length) {
+		const numbers = processing.pop()!;
+		const [right, left] = numbers.splice(-2)
+		for (const operator of operators) {
+			const newNumber = operator(left, right)
+			if (numbers.length) {
+				processing.push([...numbers, newNumber])
+			} else if (newNumber === target) {
+				return true
+			}
 		}
-		expression.splice(0, 0, result)
 	}
-	return expression[0]
+	return false
+}
+
+type Operator = (left: number, right: number) => number
+
+function solve(data: string, ...operators: Operator[]) {
+	return data.split('\n').map(line => {
+		const [left, right] = line.split(': ')
+		const testValue = +left;
+		const numbers = right.split(' ').map(Number);
+		return { testValue, numbers }
+	}).filter(({ testValue, numbers }) => canBeMadeTrue(testValue, numbers, operators))
+		.reduce((sum, { testValue }) => sum + testValue, 0);
+}
+
+function add(left: number, right: number) {
+	return left + right;
+}
+
+function multiply(left: number, right: number) {
+	return left * right;
 }
 
 function solveOne(data: string): any {
-	let sum = 0;
-	for (const line of data.split('\n')) {
-		const [left, right] = line.split(': ')
-		const target = +left;
-		const nums = right.split(' ').map(Number);
-		const incompletes: string[][] = [[]]
-		let possible = false
-		while (incompletes.length) {
-			const ops = incompletes.pop()!;
-			for (const op of '+*') {
-				const newOps = [...ops, op]
-				if (newOps.length === nums.length - 1) {
-					const expression = nums.flatMap((num, i) => [num, newOps[i]].filter(v => v !== undefined))
-					const result = evalRawExpr(expression)
-					if (result === target) {
-						possible = true
-						break
-					}
-				} else {
-					incompletes.push(newOps)
-				}
-			}
-		}
-		if (possible) {
-			sum += target
-		}
-	}
-	return sum
+	return solve(data, add, multiply)
 }
 
 (() => {
@@ -64,35 +58,12 @@ function solveOne(data: string): any {
 	console.log(solveOne(data));
 })();
 
+function concatenate(left: number, right: number) {
+	return +(left.toString() + right.toString())
+}
+
 function solveTwo(data: string): any {
-	let sum = 0;
-	for (const line of data.split('\n')) {
-		const [left, right] = line.split(': ')
-		const target = +left;
-		const nums = right.split(' ').map(Number);
-		const incompletes: string[][] = [[]]
-		let possible = false
-		while (incompletes.length) {
-			const ops = incompletes.pop()!;
-			for (const op of ['+', '*', '||']) {
-				const newOps = [...ops, op]
-				if (newOps.length === nums.length - 1) {
-					const expression = nums.flatMap((num, i) => [num, newOps[i]].filter(v => v !== undefined))
-					const result = evalRawExpr(expression)
-					if (result === target) {
-						possible = true
-						break
-					}
-				} else {
-					incompletes.push(newOps)
-				}
-			}
-		}
-		if (possible) {
-			sum += target
-		}
-	}
-	return sum
+	return solve(data, add, multiply, concatenate)
 }
 
 
