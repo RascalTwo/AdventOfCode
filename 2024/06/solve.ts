@@ -56,12 +56,13 @@ function solveOne(data: string): any {
 })();
 
 function navTheWorldEndsInLoop(loc: { r: number, c: number, char: string }, world: string[][]) {
-	let visited = []
+	let visited = new Set<string>();
 	while (loc.r >= 0 && loc.r < world.length && loc.c >= 0 && loc.c < world[0].length) {
-		if (visited.findIndex(oldLoc => JSON.stringify(oldLoc) === JSON.stringify(loc)) !== -1) {
+		const locJSON = JSON.stringify(loc)
+		if (visited.has(locJSON)) {
 			return true
 		}
-		visited.push({ ...loc })
+		visited.add(locJSON)
 		const [ro, co] = charToDir(loc.char)
 		const [nr, nc] = [loc.r + ro, loc.c + co]
 		const inFront = world[nr]?.[nc]
@@ -97,6 +98,7 @@ function solveTwo(data: string): any {
 	}
 	const startingLoc = { ...loc }
 
+	/*
 	const pathingLines: { from: { r: number, c: number }, to: { r: number, c: number }, char: string }[] = []
 
 	function moveLocUntilEnd(loc: Loc2) {
@@ -109,15 +111,17 @@ function solveTwo(data: string): any {
 			loc.c = nc
 		}
 		return loc
-	}
+	}*/
 
+
+	/*
 	function addPathingLine() {
 		const startLoc = moveLocUntilEnd({ ...loc, char: chars[(chars.indexOf(loc.char) + 2) % chars.length] })
 		const endLoc = moveLocUntilEnd({ ...loc })
 		pathingLines.push({ from: { r: startLoc.r, c: startLoc.c }, to: { r: endLoc.r, c: endLoc.c }, char: endLoc.char })
 	}
 
-	addPathingLine()
+	addPathingLine()*/
 
 	let visited = []
 	/*
@@ -136,7 +140,7 @@ function solveTwo(data: string): any {
 	}*/
 
 
-	const obs = []
+	let obs = new Set<string>()
 
 	visited = []
 	loc = { ...startingLoc }
@@ -147,8 +151,8 @@ function solveTwo(data: string): any {
 		const inFront = world[nr]?.[nc]
 
 		if (inFront === '.') {
-			const nextChar = chars[(chars.indexOf(loc.char) + 1) % chars.length]
-			const pathingLinesCanJoin = pathingLines.find(pl => {
+			//const nextChar = chars[(chars.indexOf(loc.char) + 1) % chars.length]
+			/*const pathingLinesCanJoin = pathingLines.find(pl => {
 				if (pl.char !== nextChar) return false;
 				if (pl.from.r === pl.to.r && loc.r === pl.from.r) {
 					return isBetween(pl.from.c, pl.to.c, loc.c)
@@ -157,33 +161,28 @@ function solveTwo(data: string): any {
 				}
 				return false
 			})
-			if (pathingLinesCanJoin) {
-				obs.push({ r: nr, c: nc })
-			}
+			if (pathingLinesCanJoin) {*/
+			obs.add(JSON.stringify({ r: nr, c: nc }))
+			//}
 		}
 
 		if (inFront === '#') {
 			const nextChar = chars[(chars.indexOf(loc.char) + 1) % chars.length]
 			loc.char = nextChar
-			addPathingLine()
+			//addPathingLine()
 		} else {
 			loc.r = nr;
 			loc.c = nc;
 		}
 	}
 
-	pathingLines[0] //?
-
-	return obs.length
+	obs = [...obs].map(s => JSON.parse(s))
 
 	let loopCount = 0
 	for (const [i, { r, c }] of obs.entries()) {
-		console.log(i / obs.length, i, obs.length)
 		world[r][c] = '#'
 		if (navTheWorldEndsInLoop({ ...startingLoc }, world)) {
 			loopCount++
-		} else {
-			console.log({ r, c })
 		}
 		world[r][c] = '.'
 	}
@@ -205,6 +204,5 @@ function solveTwo(data: string): any {
 #.........
 ......#...
 `.trim()), 6);
-	console.log(solveTwo(data));
-	// 598 = too low
+	//console.log(solveTwo(data));
 })();
