@@ -2,8 +2,7 @@ const fs = require('fs');
 const assert = require('assert');
 
 
-
-function solveOne(data: string): any {
+function solve(data: string, antennaPower: number, antinodeAtAntennas: boolean) {
 	const world = data.trim().replace(/\r/g, '').split('\n').map(l => [...l]);
 	const antennas: Record<string, { r: number, c: number }[]> = {};
 	for (let r = 0; r < world.length; r++) {
@@ -20,24 +19,36 @@ function solveOne(data: string): any {
 		for (const a of antennas[type]) {
 			for (const b of antennas[type]) {
 				if (a === b) continue;
+
+				if (antinodeAtAntennas) {
+					world[a.r][a.c] = '#'
+				}
+
 				const rDiff = a.r - b.r;
 				const cDiff = a.c - b.c
-				const nextR = a.r + rDiff;
-				const nextC = a.c + cDiff
-				if (world[nextR]?.[nextC] !== undefined) {
+				let nextR = a.r + rDiff;
+				let nextC = a.c + cDiff
+				for (let p = 0; p < antennaPower && world[nextR]?.[nextC] !== undefined; p++) {
 					world[nextR][nextC] = '#'
+					nextR += rDiff;
+					nextC += cDiff;
 				}
 			}
 		}
 	}
 
-	let hashes = 0;
+	let antinodeCount = 0;
 	for (const row of world) {
 		for (const cell of row) {
-			if (cell === '#') hashes++
+			if (cell === '#') antinodeCount++
 		}
 	}
-	return hashes
+	return antinodeCount
+}
+
+
+function solveOne(data: string): any {
+	return solve(data, 1, false);
 }
 
 
@@ -86,44 +97,7 @@ function solveOne(data: string): any {
 
 
 function solveTwo(data: string): any {
-	const world = data.trim().replace(/\r/g, '').split('\n').map(l => [...l]);
-	const antennas: Record<string, { r: number, c: number }[]> = {};
-	for (let r = 0; r < world.length; r++) {
-		for (let c = 0; c < world[r].length; c++) {
-			if (world[r][c] !== '.') {
-				const antenna = world[r][c];
-				if (!(antenna in antennas)) antennas[antenna] = [];
-				antennas[antenna].push({ r, c })
-			}
-		}
-	}
-
-	for (const type in antennas) {
-		for (const a of antennas[type]) {
-			for (const b of antennas[type]) {
-				if (a === b) continue;
-				world[a.r][a.c] = '#'
-				world[b.r][b.c] = '#'
-				const rDiff = a.r - b.r;
-				const cDiff = a.c - b.c
-				let nextR = a.r + rDiff;
-				let nextC = a.c + cDiff
-				while (world[nextR]?.[nextC] !== undefined) {
-					world[nextR][nextC] = '#'
-					nextR += rDiff;
-					nextC += cDiff;
-				}
-			}
-		}
-	}
-
-	let hashes = 0;
-	for (const row of world) {
-		for (const cell of row) {
-			if (cell === '#') hashes++
-		}
-	}
-	return hashes
+	return solve(data, Number.MAX_SAFE_INTEGER, true);
 }
 
 
