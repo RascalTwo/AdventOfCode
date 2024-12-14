@@ -2,45 +2,33 @@ const fs = require('fs');
 const assert = require('assert');
 
 
-function dijkstra(graph: Record<string, Record<string, number>>, startNode: string) {
-	const distances = {};
-	const visited = {};
-	const previous = {};
+function dijkstra(graph: Record<string, string[]>, startNode: string) {
+	const distances: Record<string, number> = { [startNode]: 0 };
 
-	// Initialize distances with Infinity for all nodes except the startNode
+	const previous: Record<string, string[]> = {};
 	for (const node in graph) {
-		distances[node] = Infinity;
 		previous[node] = [];
 	}
-	distances[startNode] = 0;
 
-	while (Object.keys(visited).length < Object.keys(graph).length) {
-		let currentNode = null;
-		let shortestDistance = Infinity;
+	const visited = new Set<string>()
 
-		// Find the unvisited node with the smallest distance
+	while (visited.size < Object.keys(graph).length) {
+		let currentNode = '';
 		for (const node in graph) {
-			if (!visited[node] && distances[node] < shortestDistance) {
+			if (!visited.has(node) && node in distances && distances[node] < (distances[currentNode] ?? Infinity)) {
 				currentNode = node;
-				shortestDistance = distances[node];
 			}
 		}
-
-		if (currentNode === null) {
-			break; // No reachable nodes left
+		if (currentNode === '') {
+			break;
 		}
 
-		visited[currentNode] = true;
-
-		// Update distances to neighbors of the current node
-		for (const neighbor in graph[currentNode]) {
-			const distance = graph[currentNode][neighbor];
-			const totalDistance = distances[currentNode] + distance;
+		visited.add(currentNode)
+		for (const neighbor of graph[currentNode]) {
+			const totalDistance = distances[currentNode] + 1;
 
 			previous[neighbor].push(currentNode);
-			if (totalDistance < distances[neighbor]) {
-				distances[neighbor] = totalDistance;
-			}
+			distances[neighbor] = totalDistance
 		}
 	}
 
@@ -52,23 +40,19 @@ function toKey<T>(...nums: T[]) {
 	return nums.join('|')
 }
 
-function fromKey(key: string) {
-	return key.split('|').map(Number)
-}
-
-function solveOne(data: string): any {
+function parseLavaIsland(data: string) {
 	const world = data.replace(/\r/g, '').split('\n').map(l => [...l]);
-	const graph: Record<string, Record<string, number>> = {};
-	const starts = [];
-	const ends = []
+	const graph: Record<string, string[]> = {};
+	const starts: string[] = [];
+	const ends: string[] = []
 	for (let r = 0; r < world.length; r++) {
 		for (let c = 0; c < world[r].length; c++) {
 			const num = +world[r][c];
 			const numKey = toKey(r, c)
-			if (!(numKey in graph)) graph[numKey] = {};
+			if (!(numKey in graph)) graph[numKey] = [];
 
-			if (num === 0) starts.push({ r, c })
-			if (num === 9) ends.push({ r, c })
+			if (num === 0) starts.push(numKey)
+			if (num === 9) ends.push(numKey)
 
 			for (const [ro, co] of [[0, -1], [-1, 0], [0, 1], [1, 0]]) {
 				const [nr, nc] = [r + ro, c + co];
@@ -76,37 +60,32 @@ function solveOne(data: string): any {
 				if (neighbor === undefined) continue
 				const neighborNum = +neighbor
 				if (neighborNum === num + 1) {
-					graph[numKey][toKey(nr, nc)] = 1
+					graph[numKey].push(toKey(nr, nc))
 				}
 			}
 		}
 	}
 
+	return { graph, starts, ends }
+}
 
-	let allScores = 0
-	for (const start of starts) {
-		const { distances } = dijkstra(graph, toKey(start.r, start.c))
+
+function solve(data: string, measureTrailhead: (start: string, ends: string[], dijkstraResult: ReturnType<typeof dijkstra>) => number): any {
+	const { graph, starts, ends } = parseLavaIsland(data);
+
+	return starts.reduce((sum, start) => sum + measureTrailhead(start, ends, dijkstra(graph, start)), 0)
+}
+
+function solveOne(data: string): any {
+	return solve(data, (_, ends, { distances }) => {
 		let score = 0;
 		for (const end of ends) {
-			const distance = distances[toKey(end.r, end.c)]
-			if (distance !== undefined && distance !== Infinity) {
+			if (end in distances) {
 				score++
 			}
 		}
-		const copyWorld = world.map(r => [...r]);
-		for (let r = 0; r < copyWorld.length; r++) {
-			for (let c = 0; c < copyWorld[r].length; c++) {
-				const key = toKey(r, c)
-				const distance = distances[key]
-				if (distance !== undefined && distance !== Infinity) {
-				} else {
-					copyWorld[r][c] = '.'
-				}
-			}
-		}
-		allScores += score
-	}
-	return allScores
+		return score
+	})
 }
 
 
@@ -154,65 +133,27 @@ function solveOne(data: string): any {
 
 
 function solveTwo(data: string): any {
-	const world = data.replace(/\r/g, '').split('\n').map(l => [...l]);
-	const graph: Record<string, Record<string, number>> = {};
-	const starts = [];
-	const ends = []
-	for (let r = 0; r < world.length; r++) {
-		for (let c = 0; c < world[r].length; c++) {
-			const num = +world[r][c];
-			const numKey = toKey(r, c)
-			if (!(numKey in graph)) graph[numKey] = {};
-
-			if (num === 0) starts.push({ r, c })
-			if (num === 9) ends.push({ r, c })
-
-			for (const [ro, co] of [[0, -1], [-1, 0], [0, 1], [1, 0]]) {
-				const [nr, nc] = [r + ro, c + co];
-				const neighbor = world[nr]?.[nc];
-				if (neighbor === undefined) continue
-				const neighborNum = +neighbor
-				if (neighborNum === num + 1) {
-					graph[numKey][toKey(nr, nc)] = 1
-				}
-			}
-		}
-	}
-
-
-	let allScores = 0
-	for (const start of starts) {
-		const { distances, previous } = dijkstra(graph, toKey(start.r, start.c))
-		function calculateRating(start: { r: number, c: number }, end: { r: number, c: number }) {
-			let rating = 0;
-
-			const endKey = toKey(end.r, end.c)
-			const paths = [[toKey(start.r, start.c)]]
-			while (paths.length) {
-				const path = paths.pop()!;
-				const current = path.at(-1)!
-				for (const next of previous[current] ?? []) {
-					if (next === endKey) {
-						rating++
-					} else {
-						paths.push([...path, next])
-					}
-				}
+	return solve(data, (start, ends, { distances, previous }) => {
+		function recur(current: string) {
+			if (current === start) {
+				return 1
 			}
 
+			let rating = 0
+			for (const next of previous[current]) {
+				rating += recur(next)
+			}
 			return rating
 		}
+
 		let score = 0;
 		for (const end of ends) {
-			const distance = distances[toKey(end.r, end.c)]
-			if (distance !== undefined && distance !== Infinity) {
-				const rating = calculateRating(end, start)
-				score += rating
+			if (end in distances) {
+				score += recur(end)
 			}
 		}
-		allScores += score
-	}
-	return allScores
+		return score
+	})
 }
 
 
