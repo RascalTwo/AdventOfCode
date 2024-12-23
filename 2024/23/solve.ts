@@ -1,37 +1,39 @@
 const fs = require('fs');
 const assert = require('assert');
 
-
-
-function solveOne(data: string): any {
+function parseGraph(data: string) {
 	const connections = data.replace(/\r/g, '').split('\n').map(l => {
 		const [from, to] = l.split('-')
 		return { from, to }
 	});
-	const graph = {};
+
+	const graph: Record<string, Set<string>> = {};
 	for (const { from, to } of connections) {
 		for (const [orig, dest] of [[from, to], [to, from]]) {
-			if (!(orig in graph)) graph[orig] = []
-			graph[orig].push(dest)
+			if (!(orig in graph)) graph[orig] = new Set()
+			graph[orig].add(dest)
 		}
 	}
+	return graph
+}
 
-	graph
+function solveOne(data: string): any {
+	const graph = parseGraph(data)
 
-
-	const nodes = [...new Set(connections.flatMap(c => [c.from, c.to]))]
-	const threes = new Set()
+	const setsOfThrees = new Set<string>()
+	const nodes = Object.keys(graph)
 	for (const aNode of nodes) {
 		for (const bNode of graph[aNode]) {
 			for (const cNode of graph[aNode]) {
 				if (bNode === cNode) continue
-				if (graph[bNode].includes(cNode)) {
-					threes.add([aNode, bNode, cNode].sort().join('|'))
+				if (graph[bNode].has(cNode)) {
+					setsOfThrees.add([aNode, bNode, cNode].sort().join('|'))
 				}
 			}
 		}
 	}
-	return [...threes].filter(t => t.split('|').some(c => c.startsWith('t'))).length
+
+	return [...setsOfThrees].filter(set => set.split('|').some(computer => computer.startsWith('t'))).length
 }
 
 
@@ -78,13 +80,13 @@ function intersectionOf(a: Set<string>, b: Set<string>) {
 	return new Set([...a].filter(ai => b.has(ai)))
 }
 
-function bronKerbosch(graph: Record<string, Set<string>>, current: Set<string>, possible: Set<string>, X: Set<string>, results: Set<string>[]) {
+function* bronKerbosch(graph: Record<string, Set<string>>, current: Set<string>, possible: Set<string>, X: Set<string>): Generator<Set<string>> {
 	if (!possible.size && !X.size) {
-		results.push(current)
-		return
+		yield current
 	}
+
 	for (const V of possible) {
-		bronKerbosch(graph, new Set([...current, V]), intersectionOf(possible, graph[V]), intersectionOf(X, graph[V]), results)
+		yield* bronKerbosch(graph, new Set([...current, V]), intersectionOf(possible, graph[V]), intersectionOf(X, graph[V]))
 		possible.delete(V)
 		X.add(V)
 	}
@@ -93,24 +95,13 @@ function bronKerbosch(graph: Record<string, Set<string>>, current: Set<string>, 
 
 
 function solveTwo(data: string): any {
-	const connections = data.replace(/\r/g, '').split('\n').map(l => {
-		const [from, to] = l.split('-')
-		return { from, to }
-	});
-	const graph: Record<string, Set<string>> = {};
-	for (const { from, to } of connections) {
-		for (const [orig, dest] of [[from, to], [to, from]]) {
-			if (!(orig in graph)) graph[orig] = new Set()
-			graph[orig].add(dest)
-		}
-	}
+	const graph = parseGraph(data);
 
-	const results: Set<string>[] = []
-	bronKerbosch(graph, new Set(), new Set(Object.keys(graph)), new Set(), results)
-	results
-	return [...[...results.values()].reduce((a, b) => {
-		return a.size > b.size ? a : b
-	})].sort().join(',')
+	let largest = new Set<string>()
+	for (const current of bronKerbosch(graph, new Set(), new Set(Object.keys(graph)), new Set())) {
+		if (current.size > largest.size) largest = current
+	}
+	return [...largest].sort().join(',')
 }
 
 
@@ -157,3 +148,5 @@ tb-vc
 td-yn`.trim()), 'co,de,ka,ta');
 	console.log(solveTwo(data));
 })();
+
+export { }
