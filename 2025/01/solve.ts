@@ -1,25 +1,33 @@
 const fs = require('fs');
 const assert = require('assert');
 
+function solve(data: string){
+	let dialAngle = 50;
+
+	let pointedAtZero = 0;
+	let landedAtZero = 0;
+
+	for (const rawRotation of data.trim().split('\n')){
+		const direction = rawRotation[0];
+		const distance = +rawRotation.slice(1);
+
+		const change = direction == 'L' ? -1 : 1
+		for (let _ = 0; _ < distance; _++){
+			dialAngle += change;
+
+			if (dialAngle > 99) dialAngle = dialAngle - 100;
+			if (dialAngle < 0) dialAngle = dialAngle + 100;
+
+			if (dialAngle === 0) pointedAtZero++
+		}
+		if (dialAngle === 0) landedAtZero++
+	}
+	return { pointedAtZero, landedAtZero }
+}
 
 
 function solveOne(data: string): any{
-	let direction = 50;
-	let zeroes = 0
-	for (const line of data.trim().split('\n')){
-		const direction2 = line[0];
-		let change = +line.slice(1)
-		//direction2
-		//change
-		if (direction2 == 'L') change *= -1
-		//console.log(direction)
-		direction += change;
-		while (direction > 99) direction = direction - 100;
-		while (direction < 0) direction = direction + 100;
-		//console.log({ direction2, change, direction })
-		if (direction === 0) zeroes++
-	}
-	return zeroes
+	return solve(data).landedAtZero
 }
 
 
@@ -40,47 +48,7 @@ L82`), 3);
 
 
 function solveTwo(data: string): any{
-	let direction = 50;
-	let zeroes = 0
-	for (const line of data.trim().split('\n')){
-		const direction2 = line[0];
-		let change = +line.slice(1)
-		//direction2
-		//change
-		//if (direction2 == 'L') change *= -1
-		//console.log(direction)
-		//console.log(change)
-		for (let i = 0; i < change; i++){
-			//console.log(direction)
-			direction += direction2 == 'L' ? -1 : 1
-			//console.log(direction)
-			if (direction > 99) {
-				//zeroes++
-				direction = direction - 100;
-			}
-			if (direction < 0) {
-				//zeroes++
-				direction = direction + 100;
-			}
-			if (direction== 0){
-				zeroes++
-			}
-			//console.log(direction)
-		}
-		//console.log({ change, direction })
-		/*direction += change;
-		/*while (direction > 99) {
-			zeroes++
-			direction = direction - 100;
-		}
-		while (direction < 0) {
-			zeroes++
-			direction = direction + 100;
-		}*/
-		//console.log({ direction2, change, direction })
-		//if (direction === 0) zeroes++
-	}
-	return zeroes
+	return solve(data).pointedAtZero
 }
 
 (() => {
