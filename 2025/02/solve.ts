@@ -2,25 +2,28 @@ const fs = require('fs');
 const assert = require('assert');
 
 
+function solve(data: string, calcMinimumChunkSize: (id: string)  => number): any{
+	const invalidIDs = new Set<number>();
+	for (const [first, last] of data.trim().split(',').map(range => range.split('-').map(Number))){
+		for (let currentId = first; currentId <= last; currentId++){
+			if (currentId < 10) continue;
 
-function solveOne(data: string): any{
-	const ranges = data.trim().split(',');
-	let total= 0
-	for (const range of ranges){
-		const [first, last] = range.split('-').map(Number)
-		let invalid = []
-		for (let i = first; i <= last; i++){
-			const str = i.toString();
-			if (str.length % 2 === 0) {
-				const [front, end] = [str.slice(0, str.length / 2), str.slice(str.length / 2)]
-				if (front === end) {
-					invalid.push(i);
+			const idString = currentId.toString();
+			const halfwayPoint = Math.ceil(idString.length / 2)
+			for (let chunkSize = calcMinimumChunkSize(idString); chunkSize <= halfwayPoint; chunkSize++){
+				const chunk = idString.slice(0, chunkSize);
+				const invalidId = chunk.repeat(idString.length / chunk.length);
+				if (invalidId === idString) {
+					invalidIDs.add(currentId)
 				}
 			}
 		}
-		total += invalid.reduce((a, b) => a + b, 0)
 	}
-	return total
+	return [...invalidIDs].reduce((a, b) => a + b, 0)
+}
+
+function solveOne(data: string): any{
+	return solve(data, id => Math.ceil(id.length / 2));
 }
 
 
@@ -32,25 +35,7 @@ function solveOne(data: string): any{
 })();
 
 function solveTwo(data: string): any{
-	const ranges = data.trim().split(',');
-	let invalids = new Set<number>();
-	for (const range of ranges){
-		const [first, last] = range.split('-').map(Number)
-		for (let i = first; i <= last; i++){
-			const str = i.toString();
-			if (str.length === 1) continue
-			for (let cs = 1; cs <= str.length / 2; cs++){
-				const thing = str.slice(0, cs);
-				const times = str.length / thing.length;
-				//const big = str.slice(0, cs).repeat(1000).slice(0, str.length);
-				const big = str.slice(0, cs).repeat(times);
-				if (big === str) {
-					invalids.add(i)
-				}
-			}
-		}
-	}
-	return [...invalids].reduce((a, b) => a + b, 0)
+	return solve(data, id => 1);
 }
 
 
