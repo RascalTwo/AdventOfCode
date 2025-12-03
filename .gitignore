@@ -11,3 +11,6 @@ solve
 
 meta
 *visualize*
+
+# Todo files
+*.todo
