@@ -2,26 +2,61 @@ const fs = require('fs');
 const assert = require('assert');
 
 
+function parseDatabase(data: string) {
+	const [rawRanges, rawIngredients = ''] = data.trim().split('\r\n\r\n');
+	const ranges = rawRanges.split('\n').map(l => l.split('-').map(Number) as [number, number]);
+	const ingredients = rawIngredients.split('\n').map(Number);
+	return [ranges, ingredients] as const
+}
 
-function solveOne(data: string): any{
-	const [a, b] = data.trim().split('\r\n\r\n');
-	const ranges = a.split('\n').map(l => l.split('-').map(Number));
-	const ings = b.split('\n').map(Number);
-	let frec = 0
+function combineRanges(ranges: [number, number][]) {
+	while (true){
+		let rangesMerges = false;
+		for (const a of ranges) {
+			for (const b of ranges) {
+				if (a === b) continue;
 
-	for (const ing of ings){
-		let fresh = false;
-		for (const [start, end] of ranges){
-			if (ing >= start && ing <= end) {
-				fresh = true;
-				break
+				const [aStart, aEnd] = a;
+				const [bStart, bEnd] = b;
+				if ((aStart >= bStart && aStart <= bEnd) || (aEnd >= bStart && aEnd <= bEnd) || (bStart >= aStart && bStart <= aEnd) || (bEnd >= aStart && bEnd <= aEnd)) {
+					a[0] = Math.min(aStart, bStart)
+					a[1] = Math.max(aEnd, bEnd)
+
+					ranges.splice(ranges.indexOf(b), 1)
+
+					rangesMerges = true
+					break
+				}
 			}
 		}
-		if (fresh) {
-			frec++
+		if (!rangesMerges) break;
+	}
+}
+
+function solve(data: string) {
+	const [ranges, ingredients] = parseDatabase(data);
+
+	combineRanges(ranges)
+
+	let rangeTotal = 0
+	for (const [start, end] of ranges) {
+		rangeTotal += end - start + 1
+	}
+
+	let freshIngredientCount = 0
+	for (const ingredient of ingredients) {
+		if (ranges.some(([start, end]) => start <= ingredient && ingredient <= end)) {
+			freshIngredientCount++
 		}
 	}
-	return frec
+
+	return { rangeTotal, freshIngredientCount }
+}
+
+
+
+function solveOne(data: string): any {
+	return solve(data).freshIngredientCount
 }
 
 
@@ -42,57 +77,9 @@ function solveOne(data: string): any{
 })();
 
 
-function solveTwo(data: string): any{
-	const [a,] = data.trim().split('\r\n\r\n');
-	const ranges = a.split('\n').map(l => l.split('-').map(Number));
-	while (true){
-		let changed = false;
-		for (let [ai, a] of ranges.entries()){
-			for (let [bi, b] of ranges.entries()){
-				if (ai === bi) continue;
-				const [aStart, aEnd] = a;
-				const [bStart, bEnd] = b;
-				if ((aStart >= bStart && aStart <= bEnd) || (aEnd >= bStart && aEnd <= bEnd) || (bStart >= aStart && bStart <= aEnd) || (bEnd >= aStart && bEnd <= aEnd)){
-					const newStart = Math.min(aStart, bStart)
-					const newEnd = Math.max(aEnd, bEnd)
-					ranges.splice(bi, 1)
-					a[0] = newStart
-					a[1] = newEnd
-					changed = true
-				}
-				if (changed) break
-			}
-				if (changed) break
-		}
-		if (!changed) break
-	}
-	let total = 0
-	for (const [start, end] of ranges){
-		total += end - start + 1
-	}
-	return total
+function solveTwo(data: string): any {
+	return solve(data).rangeTotal
 }
-
-				/*
-16-20
-12-18
-03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23
-AS    AE
-                     BS          BE
-
-10 11 12 13 14 15 16 17 18 19 20 21 22 23
-      BS                 BE
-			            AS           AE
-
-      BS                 BE
-AS           AE
-
-      AS                 AE
-			            BS           BE
-
-      AS                 AE
-BS           BE
-				*/
 
 (() => {
 	const data = fs.readFileSync(__dirname + '/input.in').toString();
@@ -103,4 +90,4 @@ BS           BE
 	console.log(solveTwo(data));
 })();
 
-export {};
+export { };
